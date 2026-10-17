@@ -12,7 +12,15 @@
   "type": "commonjs",
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "sequelize-cli": "^6.6.5",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.8",
+    "esbuild": "^0.28.2",
+    "mysql2": "^3.24.6",
+    "sequelize": "^6.37.8",
+    "undici-types": "^8.9.0"
   }
 }
