@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Usuários - Euroart</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="auth.js"></script>
+    <script>
+        const user = JSON.parse(localStorage.getItem('usuario') || '{}');
+        if (user.perfil !== 'admin') {
+            window.location.href = 'index.html';
+        }
+    </script>
+</head>
+<body>
+    <div class="app-layout">
+        <main class="main-content">
+            <div class="container" style="margin: 0; max-width: 800px;">
+                <h1><i class="fas fa-users-cog"></i> Gestão de Usuários</h1>
+                <p>Cadastre novos conferentes ou administradores no sistema.</p>
+                
+                <div id="feedbackMessage" class="feedback-message"></div>
+
+                <div class="history-summary" style="margin-top: 20px;">
+                    <h2>Novo Usuário</h2>
+                    <form id="form-novo-usuario" style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
+                        <div style="display: flex; gap: 15px;">
+                            <input type="text" id="novoNome" placeholder="Nome Completo" required style="flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
+                            <select id="novoPerfil" required style="padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
+                                <option value="conferente">Conferente (Acesso Limitado)</option>
+                                <option value="admin">Administrador (Acesso Total)</option>
+                            </select>
+                        </div>
+                        
+                        <input type="email" id="novoEmail" placeholder="E-mail de acesso" required style="padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
+                        <input type="password" id="novaSenha" placeholder="Senha Temporária" required style="padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
+                        
+                        <button type="submit" class="btn-finalizar" style="align-self: flex-start; margin-top: 10px;">
+                            <i class="fas fa-plus"></i> Cadastrar Usuário
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="menu.js"></script>
+    <script src="frases.js"></script>
+    <script>
+        carregarMenu('menu-usuarios');
+
+        document.getElementById('form-novo-usuario').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const nome = document.getElementById('novoNome').value;
+            const email = document.getElementById('novoEmail').value;
+            const senha = document.getElementById('novaSenha').value;
+            const perfil = document.getElementById('novoPerfil').value;
+
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/registrar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome, email, senha, perfil })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    mostrarMensagem(data.erro || "Erro ao cadastrar.", "error");
+                    return;
+                }
+
+                mostrarMensagem(`Usuário ${nome} (${perfil}) cadastrado com sucesso!`, "success");
+                document.getElementById('form-novo-usuario').reset();
+
+            } catch (error) {
+                console.error("Erro:", error);
+                mostrarMensagem("Erro de conexão com o servidor.", "error");
+            }
+        });
+    </script>
+</body>
+</html>

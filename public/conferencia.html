@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conferência - Euroart</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="modal.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="auth.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <main class="main-content">
+            <div class="container" style="margin: 0; max-width: 100%;">
+                <div class="header-with-logo">
+                    <h1>Conferência em Execução</h1>
+                </div>
+
+                <div class="feedback-message" id="feedbackMessage"></div>
+
+                <div class="input-section">
+                    <label for="jsonInput" class="button-label">Importar JSON (Remessa)</label>
+                    <input type="file" id="jsonInput" accept=".json" style="display: none;">
+                    <input type="text" id="codigoInput" placeholder="Bipar NF ou Chave de Acesso">
+                </div>
+
+                <div class="conferencia-select">
+                    <label for="selectConferencia">Retomar Conferência:</label>
+                    <select id="selectConferencia" disabled>
+                        <option value="">Nenhuma em andamento</option>
+                    </select>
+                    <button onclick="retomarConferencia()" class="btn-retomar">Retomar</button>
+                </div>
+
+                <h2 id="transportadoraAtual"></h2>
+                <div class="summary">
+                    <p>Pacotes Conferidos: <span id="contador">0/0</span></p>
+                </div>
+
+                <div class="controls">
+                    <button onclick="interromperConferencia()" class="btn-interromper" disabled>Interromper</button>
+                    <button onclick="reiniciarUltimaRemessa()" class="btn-reset" disabled>Remover Última Remessa</button>
+                    <button onclick="excluirPacotesSelecionados()" class="btn-excluir" disabled>Excluir Selecionados</button>
+                    <button onclick="finalizarConferencia()" class="btn-finalizar" disabled>Finalizar</button>
+                </div>
+                
+                <div class="filter-section">
+                    <input type="text" id="filtroNf" placeholder="Filtrar por NF...">
+                    <button onclick="filtrarPendentes()" class="btn-pendentes">Pendentes de Conferência</button>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Excluir</th>
+                                <th>NF</th>
+                                <th>Chave Acesso</th>
+                                <th>Cliente</th>
+                                <th>Produto</th>
+                                <th>UF</th>
+                                <th>Status</th>
+                                <th>Remessa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaPacotes"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="duplicateModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 class="modal-title">Atenção: Pacote Duplicado!</h2>
+            <div id="modalDetails" class="modal-details"></div>
+            <p class="modal-instruction">Para continuar, digite a palavra <strong>DUPLICADO</strong> no campo abaixo e pressione Enter.</p>
+            <input type="text" id="modalConfirmationInput" class="modal-input" placeholder="Digite DUPLICADO">
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="script.js"></script>
+    <script src="menu.js"></script>
+    <script src="frases.js"></script>
+    <script>carregarMenu('menu-conferencia');</script>
+</body>
+</html>
