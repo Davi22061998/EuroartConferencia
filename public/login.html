@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Euroart Conferência</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background-color: var(--cor-tabela-header); }
+        .login-container {
+            max-width: 400px;
+            margin: 10vh auto;
+            padding: 40px 30px;
+            background-color: #fff;
+            border-radius: var(--radius-caixas);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .login-form input {
+            padding: 12px;
+            border: 1px solid var(--cor-borda-padrao);
+            border-radius: var(--radius-input);
+            font-size: 1em;
+        }
+        .login-form button {
+            background-color: var(--cor-principal);
+            color: #fff;
+            padding: 12px;
+            border: none;
+            border-radius: var(--radius-botoes);
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .login-form button:hover { background-color: #45a049; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <img src="images/euro.png" alt="Logo Euroart" style="max-height: 80px; margin-bottom: 20px;">
+        <h2 id="form-title">Acesso ao Sistema</h2>
+        
+        <div id="feedbackMessage" class="feedback-message"></div>
+
+        <form id="auth-form" class="login-form">
+            <!-- Este campo ficará invisível a menos que o banco esteja vazio -->
+            <input type="text" id="nomeInput" placeholder="Seu Nome Completo" style="display: none;">
+            
+            <input type="email" id="emailInput" placeholder="E-mail" required>
+            <input type="password" id="senhaInput" placeholder="Senha" required>
+            
+            <button type="submit" id="submitBtn">Entrar</button>
+        </form>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="login.js"></script>
+</body>
+</html>
