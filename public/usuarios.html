@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Usuários - Euroart</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="auth.js"></script>
+    <script>
+        // Trava de segurança: Se não for admin, expulsa para o dashboard
+        const user = JSON.parse(localStorage.getItem('usuario') || '{}');
+        if (user.perfil !== 'admin') window.location.href = 'index.html';
+    </script>
+</head>
+<body>
+    <div class="app-layout">
+        <main class="main-content">
+            <div class="container" style="margin: 0; max-width: 100%;">
+                <h1><i class="fas fa-users-cog"></i> Gestão de Usuários</h1>
+                <p>Cadastre, edite perfis e gerencie as senhas de acesso do sistema.</p>
+                
+                <div id="feedbackMessage" class="feedback-message"></div>
+
+                <!-- Formulário de Usuário -->
+                <div class="container" style="margin-bottom: 30px; background-color: #f8fafc;">
+                    <h2 id="form-titulo">Novo Usuário</h2>
+                    <form id="form-usuario" style="display: flex; flex-direction: column; gap: 15px;">
+                        <input type="hidden" id="usuarioId">
+                        
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            <input type="text" id="nomeInput" placeholder="Nome Completo" required style="flex: 2;">
+                            <input type="email" id="emailInput" placeholder="E-mail de Acesso" required style="flex: 2;">
+                            <select id="perfilInput" required style="flex: 1;">
+                                <option value="conferente">Conferente (Restrito)</option>
+                                <option value="admin">Administrador (Total)</option>
+                            </select>
+                        </div>
+
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+                            <input type="password" id="senhaInput" placeholder="Senha Temporária" style="flex: 1;">
+                            <button type="submit" id="btnSalvarUsuario" class="btn-finalizar">
+                                <i class="fas fa-save"></i> Salvar Usuário
+                            </button>
+                            <button type="button" id="btnCancelarEdicao" onclick="limparFormulario()" class="btn-pendentes" style="display: none;">
+                                Cancelar Edição
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tabela de Usuários -->
+                <h2>Usuários Cadastrados</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>E-mail</th>
+                                <th>Perfil</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaUsuarios"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="menu.js"></script>
+    <script src="frases.js"></script>
+    <script>
+        carregarMenu('menu-usuarios');
+        
+        // A variável 'token' já foi declarada pelo auth.js no cabeçalho
+
+        async function carregarUsuarios() {
+            try {
+                const res = await fetch('http://localhost:3000/api/usuarios', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const usuarios = await res.json();
+
+                const tbody = document.getElementById('tabelaUsuarios');
+                tbody.innerHTML = '';
+
+                usuarios.forEach(u => {
+                    const corPerfil = u.perfil === 'admin' ? 'color: #ef4444;' : 'color: #10b981;';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>#${u.id}</td>
+                            <td><strong>${u.nome}</strong></td>
+                            <td>${u.email}</td>
+                            <td><span class="user-cargo" style="${corPerfil}">${u.perfil.toUpperCase()}</span></td>
+                            <td>
+                                <button class="btn-retomar" onclick='prepararEdicao(${JSON.stringify(u)})' style="padding: 6px 12px; font-size: 0.85em;">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn-excluir" onclick="excluirUsuario(${u.id})" style="padding: 6px 12px; font-size: 0.85em;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                mostrarMensagem("Erro ao carregar lista de usuários.", "error");
+            }
+        }
+
+        function prepararEdicao(usuario) {
+            document.getElementById('usuarioId').value = usuario.id;
+            document.getElementById('nomeInput').value = usuario.nome;
+            document.getElementById('emailInput').value = usuario.email;
+            document.getElementById('perfilInput').value = usuario.perfil;
+            document.getElementById('senhaInput').value = '';
+            document.getElementById('senhaInput').required = false; // Senha não é obrigatória na edição
+            
+            document.getElementById('form-titulo').textContent = `Editar Usuário #${usuario.id}`;
+            document.getElementById('btnCancelarEdicao').style.display = 'inline-block';
+            document.getElementById('senhaInput').placeholder = "Deixe em branco para manter a atual";
+            document.getElementById('btnSalvarUsuario').innerHTML = '<i class="fas fa-sync"></i> Atualizar Usuário';
+        }
+
+        function limparFormulario() {
+            document.getElementById('usuarioId').value = '';
+            document.getElementById('form-usuario').reset();
+            document.getElementById('form-titulo').textContent = 'Novo Usuário';
+            document.getElementById('btnCancelarEdicao').style.display = 'none';
+            document.getElementById('senhaInput').placeholder = "Senha Temporária";
+            document.getElementById('senhaInput').required = true; // Senha é obrigatória na criação
+            document.getElementById('btnSalvarUsuario').innerHTML = '<i class="fas fa-save"></i> Salvar Usuário';
+        }
+
+        document.getElementById('form-usuario').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const id = document.getElementById('usuarioId').value;
+            const nome = document.getElementById('nomeInput').value;
+            const email = document.getElementById('emailInput').value;
+            const perfil = document.getElementById('perfilInput').value;
+            const senha = document.getElementById('senhaInput').value;
+
+            const isEdicao = Boolean(id);
+            // Agora a criação de novos usuários usa a rota protegida /api/usuarios via POST
+            const url = isEdicao ? `http://localhost:3000/api/usuarios/${id}` : 'http://localhost:3000/api/usuarios';
+            const method = isEdicao ? 'PUT' : 'POST';
+
+            const body = isEdicao 
+                ? { nome, email, perfil, ...(senha ? { novaSenha: senha } : {}) }
+                : { nome, email, perfil, senha };
+
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` 
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await res.json();
+                if (!res.ok) { mostrarMensagem(data.erro || "Erro na operação.", "error"); return; }
+
+                mostrarMensagem(isEdicao ? "Usuário atualizado com sucesso!" : "Usuário cadastrado com sucesso!", "success");
+                limparFormulario();
+                carregarUsuarios();
+            } catch (err) {
+                mostrarMensagem("Erro de conexão com o servidor.", "error");
+            }
+        });
+
+        async function excluirUsuario(id) {
+            if (!confirm("Tem certeza que deseja excluir este usuário? O acesso dele será imediatamente revogado.")) return;
+
+            try {
+                const res = await fetch(`http://localhost:3000/api/usuarios/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await res.json();
+                if (!res.ok) { mostrarMensagem(data.erro || "Erro ao excluir.", "error"); return; }
+
+                mostrarMensagem("Usuário excluído com sucesso!", "success");
+                carregarUsuarios();
+            } catch (err) {
+                mostrarMensagem("Erro ao excluir usuário.", "error");
+            }
+        }
+
+        carregarUsuarios();
+        // Na primeira carga, a senha é obrigatória para criar novo usuário
+        document.getElementById('senhaInput').required = true;
+    </script>
+</body>
+</html>

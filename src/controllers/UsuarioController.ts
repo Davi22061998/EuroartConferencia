@@ -3,7 +3,41 @@ import Usuario from '../models/Usuario';
 import bcrypt from 'bcrypt';
 
 export class UsuarioController {
-  // Listar todos os usuários (apenas admin)
+  // Criar novo usuário (Apenas Admin)
+  static async criar(req: Request, res: Response): Promise<void> {
+    try {
+      const { nome, email, senha, perfil } = req.body;
+
+      if (!nome || !email || !senha) {
+        res.status(400).json({ erro: 'Nome, e-mail e senha são obrigatórios.' });
+        return;
+      }
+
+      const usuarioExistente = await Usuario.findOne({ where: { email } });
+      if (usuarioExistente) {
+        res.status(400).json({ erro: 'Este e-mail já está em uso.' });
+        return;
+      }
+
+      const senha_hash = await bcrypt.hash(senha, 10);
+      
+      const novoUsuario = await Usuario.create({
+        nome,
+        email,
+        senha_hash,
+        perfil: perfil || 'conferente'
+      });
+
+      res.status(201).json({
+        mensagem: 'Usuário criado com sucesso!',
+        usuario: { id: novoUsuario.id, nome: novoUsuario.nome, email: novoUsuario.email, perfil: novoUsuario.perfil }
+      });
+    } catch (error: any) {
+      res.status(400).json({ erro: error.message });
+    }
+  }
+
+  // Listar todos os usuários (Apenas Admin)
   static async listar(req: Request, res: Response): Promise<void> {
     try {
       const usuarios = await Usuario.findAll({
@@ -16,7 +50,7 @@ export class UsuarioController {
     }
   }
 
-  // Editar usuário existente
+  // Editar usuário existente (Apenas Admin)
   static async atualizar(req: Request, res: Response): Promise<void> {
     try {
       const usuarioId = Number(req.params.id);
@@ -53,7 +87,7 @@ export class UsuarioController {
     }
   }
 
-  // Excluir usuário
+  // Excluir usuário (Apenas Admin)
   static async excluir(req: Request, res: Response): Promise<void> {
     try {
       const usuarioId = Number(req.params.id);
