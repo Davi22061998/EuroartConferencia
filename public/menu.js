@@ -6,9 +6,12 @@ function carregarMenu(itemAtivoId) {
     const isAdmin = usuarioLogado && usuarioLogado.perfil === 'admin';
     const cargoDisplay = isAdmin ? 'Administrador' : 'Conferente';
 
-    // Cria o HTML do botão de usuários APENAS se for Admin
-    const menuUsuariosHTML = isAdmin 
-        ? `<li id="menu-usuarios" onclick="window.location.href='usuarios.html'"><i class="fas fa-users-cog"></i> Gestão de Usuários</li>`
+    // Abas exclusivas para Administradores
+    const menuAdminHTML = isAdmin 
+        ? `
+            <li id="menu-usuarios" onclick="window.location.href='usuarios.html'"><i class="fas fa-users-cog"></i> Gestão de Usuários</li>
+            <li id="menu-parametrizacao" onclick="window.location.href='parametrizacao.html'"><i class="fas fa-boxes"></i> Parametrização SKUs/Caixas</li>
+          `
         : '';
 
     const menuHTML = `
@@ -29,7 +32,7 @@ function carregarMenu(itemAtivoId) {
                 <li id="menu-historico" onclick="window.location.href='historico.html'"><i class="fas fa-history"></i> Histórico</li>
                 <li id="menu-minutas" onclick="window.location.href='minutas.html'"><i class="fas fa-file-pdf"></i> Minutas Impressas</li>
                 
-                ${menuUsuariosHTML}
+                ${menuAdminHTML}
             </ul>
 
             <button class="logout-btn" onclick="fazerLogout()">
@@ -38,7 +41,6 @@ function carregarMenu(itemAtivoId) {
         </aside>
     `;
 
-    // Insere o menu dentro do container flexível (lado a lado com o conteúdo)
     const appLayout = document.querySelector('.app-layout');
     if (appLayout) {
         appLayout.insertAdjacentHTML('afterbegin', menuHTML);
@@ -46,7 +48,6 @@ function carregarMenu(itemAtivoId) {
         document.body.insertAdjacentHTML('afterbegin', menuHTML);
     }
 
-    // Marca o botão atual como ativo (verde/azul)
     if (itemAtivoId) {
         const itemAtivo = document.getElementById(itemAtivoId);
         if (itemAtivo) {
