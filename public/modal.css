@@ -1,93 +1,97 @@
-/* =========================================
-   MODAL DE DUPLICIDADE (PREMIUM)
-========================================= */
+/* Modais de Conferência e Alertas */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(15, 23, 42, 0.85); /* Fundo ardósia escuro */
-    backdrop-filter: blur(5px); /* Efeito de vidro desfocado */
+    background-color: rgba(0, 0, 0, 0.82);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 9999;
-    
-    /* A Mágica para ocultar de vez na tela inicial */
-    visibility: hidden; 
-    opacity: 0; 
-    pointer-events: none; 
-    transition: all 0.3s ease-in-out;
+    z-index: 1000;
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0.3s, opacity 0.3s ease-in-out;
 }
 
 .modal-overlay.visible {
     visibility: visible;
     opacity: 1;
-    pointer-events: auto;
 }
 
 .modal-content {
-    background-color: #ffffff;
-    color: #334155;
-    padding: 40px;
-    border-radius: 16px; /* Cantos mais suaves */
+    background-color: #fff;
+    color: #1e293b;
+    padding: 35px;
+    border-radius: 12px;
     width: 90%;
-    max-width: 550px;
+    max-width: 580px;
     text-align: center;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    transform: scale(0.95) translateY(20px);
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+    transform: scale(0.92);
+    transition: transform 0.25s ease-in-out;
 }
 
 .modal-overlay.visible .modal-content {
-    transform: scale(1) translateY(0);
+    transform: scale(1);
 }
 
-.modal-title {
-    color: #ef4444; /* Vermelho moderno */
+.modal-title-danger {
+    color: #dc2626;
     font-size: 1.8em;
-    margin-bottom: 20px;
-    font-weight: 800;
-}
-
-.modal-details {
-    background-color: #fef2f2;
-    border: 1px solid #fca5a5;
-    padding: 20px;
-    margin-bottom: 25px;
-    border-radius: 12px;
-    text-align: left;
-}
-
-.modal-details p {
-    margin: 8px 0;
-    font-size: 1.05em;
-    color: #7f1d1d;
-}
-
-.modal-instruction {
-    font-size: 1.1em;
     margin-bottom: 15px;
-    color: #475569;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
 
-.modal-input {
-    width: 100%;
+.modal-title-warning {
+    color: #d97706;
+    font-size: 1.8em;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.modal-box-info {
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
     padding: 15px;
-    font-size: 1.2em;
-    text-align: center;
-    border: 2px solid #cbd5e1;
     border-radius: 8px;
-    text-transform: uppercase;
-    font-weight: bold;
-    color: #0f172a;
-    transition: border-color 0.3s;
-    box-sizing: border-box;
+    margin-bottom: 20px;
+    text-align: left;
+    font-size: 1em;
+    color: #991b1b;
 }
 
-.modal-input:focus {
-    outline: none;
-    border-color: #ef4444;
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+.modal-box-info p {
+    margin: 4px 0;
+}
+
+.modal-action-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 1.05em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.modal-action-btn:hover {
+    opacity: 0.9;
+}
+
+.btn-danger-action {
+    background-color: #dc2626;
+    color: #fff;
+}
+
+.btn-success-action {
+    background-color: #16a34a;
+    color: #fff;
 }

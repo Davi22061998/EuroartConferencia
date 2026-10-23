@@ -6,7 +6,7 @@ export interface CaixaEmbalagemAttributes {
   codigo_sku: string;
   nome: string;
   peso_gramas: number;
-  descricao?: string;
+  descricao?: string | null;
   criado_em?: Date;
 }
 
@@ -17,7 +17,7 @@ export class CaixaEmbalagem extends Model<CaixaEmbalagemAttributes, CaixaCreatio
   public declare codigo_sku: string;
   public declare nome: string;
   public declare peso_gramas: number;
-  public declare descricao?: string;
+  public declare descricao?: string | null;
   public declare readonly criado_em: Date;
 }
 
