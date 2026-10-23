@@ -1,4 +1,5 @@
 'use strict';
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -15,19 +16,31 @@ module.exports = {
         references: {
           model: 'conferencias',
           key: 'id'
-        }
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
-      mkp: {
-        type: Sequelize.STRING(100),
+      numero_remessa: {
+        type: Sequelize.INTEGER,
         allowNull: false
+      },
+      arquivo_nome: {
+        type: Sequelize.STRING(255),
+        allowNull: false
+      },
+      total_pacotes: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0
       },
       data_importacao: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
     });
   },
+
   async down(queryInterface) {
     await queryInterface.dropTable('remessas');
   }

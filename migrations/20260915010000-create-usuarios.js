@@ -1,4 +1,5 @@
 'use strict';
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -25,15 +26,16 @@ module.exports = {
       perfil: {
         type: Sequelize.STRING(50),
         allowNull: false,
-        defaultValue: 'auxiliar'
+        defaultValue: 'conferente'
       },
       criado_em: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
     });
   },
+
   async down(queryInterface) {
     await queryInterface.dropTable('usuarios');
   }

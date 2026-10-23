@@ -1,6 +1,8 @@
 'use strict';
+
+/** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
+  async up(queryInterface, Sequelize) {
     await queryInterface.createTable('logs_auditoria', {
       id: {
         allowNull: false,
@@ -11,7 +13,10 @@ module.exports = {
       usuario_id: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        references: { model: 'usuarios', key: 'id' },
+        references: {
+          model: 'usuarios',
+          key: 'id'
+        },
         onUpdate: 'CASCADE',
         onDelete: 'SET NULL'
       },
@@ -24,13 +29,14 @@ module.exports = {
         allowNull: true
       },
       criado_em: {
-        allowNull: false,
         type: Sequelize.DATE,
+        allowNull: false,
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
     });
   },
-  down: async (queryInterface, Sequelize) => {
+
+  async down(queryInterface) {
     await queryInterface.dropTable('logs_auditoria');
   }
 };

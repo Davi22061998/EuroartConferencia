@@ -1,4 +1,5 @@
 'use strict';
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -11,11 +12,12 @@ module.exports = {
       },
       transportadora: {
         type: Sequelize.STRING(150),
-        allowNull: true
+        allowNull: false
       },
       status: {
         type: Sequelize.STRING(50),
-        allowNull: false
+        allowNull: false,
+        defaultValue: 'em_andamento'
       },
       usuario_id: {
         type: Sequelize.INTEGER,
@@ -23,12 +25,14 @@ module.exports = {
         references: {
           model: 'usuarios',
           key: 'id'
-        }
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'RESTRICT'
       },
       data_inicio: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       },
       data_finalizacao: {
         type: Sequelize.DATE,
@@ -36,6 +40,7 @@ module.exports = {
       }
     });
   },
+
   async down(queryInterface) {
     await queryInterface.dropTable('conferencias');
   }

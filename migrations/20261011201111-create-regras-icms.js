@@ -3,7 +3,6 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    // 1. Cria a tabela
     await queryInterface.createTable('regras_icms', {
       uf: {
         type: Sequelize.CHAR(2),
@@ -17,7 +16,6 @@ module.exports = {
       }
     });
 
-    // 2. Insere as regras iniciais 
     const ufsIcms = [
       'AL', 'AM', 'AP', 'BA', 'CE', 'MA', 'PA', 'PB', 
       'PE', 'PI', 'RN', 'RO', 'RR', 'SE', 'TO'
@@ -31,7 +29,7 @@ module.exports = {
     await queryInterface.bulkInsert('regras_icms', insertData);
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface) {
     await queryInterface.dropTable('regras_icms');
   }
 };

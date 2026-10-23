@@ -1,4 +1,5 @@
 'use strict';
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -19,7 +20,9 @@ module.exports = {
         references: {
           model: 'conferencias',
           key: 'id'
-        }
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       caminho_arquivo: {
         type: Sequelize.STRING(500),
@@ -27,7 +30,8 @@ module.exports = {
       },
       data_emissao: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: false,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       },
       data_expiracao: {
         type: Sequelize.DATE,
@@ -35,6 +39,7 @@ module.exports = {
       }
     });
   },
+
   async down(queryInterface) {
     await queryInterface.dropTable('minutas');
   }

@@ -1,42 +1,42 @@
 'use strict';
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('produtos', {
+    await queryInterface.createTable('skus_produtos', {
       id: {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      sku: {
+      codigo_sku: {
         type: Sequelize.STRING(100),
         allowNull: false,
         unique: true
       },
-      codigo_xml: {
-        type: Sequelize.STRING(60),
-        allowNull: true
-      },
-      descricao: {
-        type: Sequelize.STRING(255),
+      nome_produto: {
+        type: Sequelize.STRING(200),
         allowNull: false
       },
-      peso_unitario_g: {
+      peso_unitario_gramas: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false
       },
-      embalagem_id: {
-        type: Sequelize.INTEGER,
-        allowNull: true,
-        references: {
-          model: 'embalagens',
-          key: 'id'
-        }
+      tolerancia_peso_porcento: {
+        type: Sequelize.DECIMAL(5, 2),
+        allowNull: false,
+        defaultValue: 2.00
+      },
+      criado_em: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
     });
   },
+
   async down(queryInterface) {
-    await queryInterface.dropTable('produtos');
+    await queryInterface.dropTable('skus_produtos');
   }
 };

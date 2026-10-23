@@ -1,4 +1,5 @@
 'use strict';
+
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -9,10 +10,15 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      chave_acesso: {
-        type: Sequelize.STRING(44),
+      conferencia_id: {
+        type: Sequelize.INTEGER,
         allowNull: false,
-        unique: true
+        references: {
+          model: 'conferencias',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       remessa_id: {
         type: Sequelize.INTEGER,
@@ -20,11 +26,18 @@ module.exports = {
         references: {
           model: 'remessas',
           key: 'id'
-        }
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
+      },
+      chave_acesso: {
+        type: Sequelize.STRING(44),
+        allowNull: false,
+        unique: true
       },
       numero_nf: {
         type: Sequelize.STRING(20),
-        allowNull: true
+        allowNull: false
       },
       razao_social: {
         type: Sequelize.STRING(255),
@@ -36,11 +49,9 @@ module.exports = {
       },
       uf: {
         type: Sequelize.CHAR(2),
-        allowNull: true
+        allowNull: false
       },
       status: {
-        // valores usados pela aplicação: pendente, ok, duplicado,
-        // divergente_peso, sem_guia_icms
         type: Sequelize.STRING(50),
         allowNull: false,
         defaultValue: 'pendente'
@@ -50,6 +61,16 @@ module.exports = {
         allowNull: false,
         defaultValue: false
       },
+      caixa_id: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: {
+          model: 'caixas_embalagem',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
+      },
       peso_esperado_g: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: true
@@ -58,12 +79,32 @@ module.exports = {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: true
       },
+      tentativas_peso: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+      },
+      justificativa_liberacao: {
+        type: Sequelize.TEXT,
+        allowNull: true
+      },
+      usuario_liberacao_id: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: {
+          model: 'usuarios',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
+      },
       data_conferido: {
         type: Sequelize.DATE,
         allowNull: true
       }
     });
   },
+
   async down(queryInterface) {
     await queryInterface.dropTable('pacotes');
   }
