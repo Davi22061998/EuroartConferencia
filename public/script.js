@@ -1,5 +1,3 @@
-// script.js - Gestão de Conferência com API MySQL e Balança
-
 let conferenciaAtual = null;
 let caixaAtiva = null;
 let filtroAtivo = false;
@@ -8,12 +6,12 @@ let filtroTermo = '';
 const API_BASE = 'http://localhost:3000/api';
 
 function obterTokenAtual() {
-    return localStorage.getItem('token') || (typeof window.token !== 'undefined' ? window.token : '');
+    return localStorage.getItem('token') || '';
 }
 
 function obterUsuarioAtual() {
     try {
-        return JSON.parse(localStorage.getItem('usuario') || (typeof window.usuarioLogado !== 'undefined' ? JSON.stringify(window.usuarioLogado) : '{}'));
+        return JSON.parse(localStorage.getItem('usuario') || '{}');
     } catch {
         return {};
     }
@@ -45,8 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function aplicarPermissoesPerfil() {
     const user = obterUsuarioAtual();
-    const elementosAdmin = document.querySelectorAll('.admin-only');
-    elementosAdmin.forEach(el => {
+    document.querySelectorAll('.admin-only').forEach(el => {
         el.style.display = user.perfil === 'admin' ? '' : 'none';
     });
 }
@@ -55,38 +52,36 @@ function iniciarMonitoramentoBalanca() {
     setInterval(async () => {
         try {
             const simulador = document.getElementById('simuladorPeso');
+            const display = document.getElementById('displayPesoBalanca');
+            if (!display) return; 
+
             if (simulador && simulador.value !== '') {
-                document.getElementById('displayPesoBalanca').textContent = `${Number(simulador.value).toFixed(2)} g`;
+                display.textContent = `${Number(simulador.value).toFixed(2)} g`;
                 return;
             }
 
             const res = await fetch(`${API_BASE}/balanca/peso`);
             if (res.ok) {
                 const dados = await res.json();
-                const display = document.getElementById('displayPesoBalanca');
-                if (display) {
-                    display.textContent = `${Number(dados.peso_gramas).toFixed(2)} g`;
-                }
+                display.textContent = `${Number(dados.peso_gramas).toFixed(2)} g`;
             }
         } catch {
-            // Balança offline
+            // Ignora silenciosamente se o backend ou ESP32 falhar (não encrava interface)
         }
     }, 1500);
 }
 
-// 1. BIPAGEM
 async function processarBipagem(codigo) {
     if (!codigo) return;
     const input = document.getElementById('codigoInput');
 
     if (!conferenciaAtual) {
-        mostrarMensagem("Nenhuma conferência selecionada. Importe um JSON ou retome uma conferência.", "warning");
+        mostrarMensagem("Nenhuma conferência ativa. Retome ou importe uma remessa.", "warning");
         aplicarEfeitoVisual("error");
-        input.value = '';
+        if(input) input.value = '';
         return;
     }
 
-    // 1º Bipe: Caixa
     if (!caixaAtiva) {
         try {
             const resCaixas = await fetch(`${API_BASE}/parametrizacao/caixas`, {
@@ -98,14 +93,21 @@ async function processarBipagem(codigo) {
 
                 if (caixaEncontrada) {
                     caixaAtiva = caixaEncontrada;
-                    document.getElementById('displayCaixaAtiva').textContent = `${caixaAtiva.codigo_sku} - ${caixaAtiva.nome}`;
-                    document.getElementById('displayPesoTara').textContent = `Tara: ${Number(caixaAtiva.peso_gramas).toFixed(2)}g`;
-                    document.getElementById('btnCancelarCaixa').style.display = 'inline-block';
+                    const elCxAtiva = document.getElementById('displayCaixaAtiva');
+                    if(elCxAtiva) elCxAtiva.textContent = `${caixaAtiva.codigo_sku} - ${caixaAtiva.nome}`;
+                    
+                    const elTara = document.getElementById('displayPesoTara');
+                    if(elTara) elTara.textContent = `Tara: ${Number(caixaAtiva.peso_gramas).toFixed(2)}g`;
+                    
+                    const btnLimpa = document.getElementById('btnCancelarCaixa');
+                    if(btnLimpa) btnLimpa.style.display = 'inline-block';
 
                     aplicarEfeitoVisual("ok");
-                    mostrarMensagem(`Caixa ${caixaAtiva.nome} identificada. Agora bipe a NF ou Chave de Acesso.`, "info");
-                    input.value = '';
-                    input.placeholder = "2º Bipe: NF ou Chave de Acesso do pacote";
+                    mostrarMensagem(`Caixa ${caixaAtiva.nome} identificada. Bipe a NF ou Chave.`, "info");
+                    if(input) {
+                        input.value = '';
+                        input.placeholder = "2º Bipe: NF ou Chave de Acesso";
+                    }
                     return;
                 }
             }
@@ -114,11 +116,10 @@ async function processarBipagem(codigo) {
         }
     }
 
-    // 2º Bipe: Pacote
     if (!caixaAtiva) {
-        mostrarMensagem("Bipe primeiro o código/SKU da caixa antes do pacote!", "warning");
+        mostrarMensagem("Bipe primeiro o código/SKU da caixa!", "warning");
         aplicarEfeitoVisual("error");
-        input.value = '';
+        if(input) input.value = '';
         return;
     }
 
@@ -164,28 +165,36 @@ async function processarBipagem(codigo) {
             }
         } else if (res.status === 404) {
             aplicarEfeitoVisual("error");
-            mostrarMensagem("DIVERGÊNCIA: Pacote não pertence a esta remessa/conferência!", "error");
+            mostrarMensagem("DIVERGÊNCIA: Pacote não pertence a esta conferência!", "error");
         } else {
             aplicarEfeitoVisual("error");
             mostrarMensagem(resposta.erro || "Erro na validação do pacote.", "error");
         }
     } catch {
-        mostrarMensagem("Falha de conexão com a API.", "error");
+        mostrarMensagem("Falha de ligação à API.", "error");
     } finally {
-        input.value = '';
-        input.focus();
+        if(input) {
+            input.value = '';
+            input.focus();
+        }
     }
 }
 
 function cancelarCaixaAtiva() {
     caixaAtiva = null;
-    document.getElementById('displayCaixaAtiva').textContent = "Aguardando bipagem...";
-    document.getElementById('displayPesoTara').textContent = "Tara: 0.00g";
-    document.getElementById('btnCancelarCaixa').style.display = 'none';
-    document.getElementById('codigoInput').placeholder = "1º Bipe: Caixa (Barcode) | 2º Bipe: NF ou Chave de Acesso";
+    const dispCaixa = document.getElementById('displayCaixaAtiva');
+    if (dispCaixa) dispCaixa.textContent = "Aguardando bipagem...";
+    
+    const dispTara = document.getElementById('displayPesoTara');
+    if (dispTara) dispTara.textContent = "Tara: 0.00g";
+    
+    const btnCanc = document.getElementById('btnCancelarCaixa');
+    if (btnCanc) btnCanc.style.display = 'none';
+    
+    const input = document.getElementById('codigoInput');
+    if (input) input.placeholder = "1º Bipe: Caixa (Barcode) | 2º Bipe: NF ou Chave de Acesso";
 }
 
-// 2. IMPORTAÇÃO DO JSON
 async function handleFileImport(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -193,7 +202,20 @@ async function handleFileImport(event) {
     const reader = new FileReader();
     reader.onload = async (e) => {
         try {
-            const data = JSON.parse(e.target.result);
+            const buffer = e.target.result;
+            let textoJson = "";
+
+            try {
+                const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+                textoJson = utf8Decoder.decode(buffer);
+            } catch {
+                const latinDecoder = new TextDecoder('windows-1252');
+                textoJson = latinDecoder.decode(buffer);
+            }
+
+            textoJson = textoJson.replace(/\uFFFD/g, '°');
+
+            const data = JSON.parse(textoJson);
             const res = await fetch(`${API_BASE}/conferencias/importar`, {
                 method: 'POST',
                 headers: {
@@ -202,7 +224,8 @@ async function handleFileImport(event) {
                 },
                 body: JSON.stringify({
                     arquivo_nome: file.name,
-                    pacotes: data
+                    pacotes: data,
+                    conferencia_ativa_id: conferenciaAtual ? conferenciaAtual.id : null
                 })
             });
 
@@ -212,64 +235,59 @@ async function handleFileImport(event) {
                 return;
             }
 
-            mostrarMensagem(`${resultado.mensagem} Novos: ${resultado.pacotes_adicionados}, Duplicados ignorados: ${resultado.pacotes_duplicados}`, "success");
+            mostrarMensagem(resultado.mensagem, "success");
             await carregarConferenciasAtivas(resultado.conferencia_id);
-        } catch {
-            mostrarMensagem("Erro ao processar o arquivo JSON.", "error");
+        } catch (err) {
+            console.error(err);
+            mostrarMensagem("Erro ao processar ficheiro JSON. Verifique a estrutura.", "error");
         } finally {
-            document.getElementById('jsonInput').value = '';
+            const inputJ = document.getElementById('jsonInput');
+            if(inputJ) inputJ.value = '';
         }
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
 }
 
-// 3. CONFERÊNCIAS ATIVAS E RETOMADA
 async function carregarConferenciasAtivas(selecionarId = null) {
     try {
         const res = await fetch(`${API_BASE}/conferencias/ativas`, {
             headers: { 'Authorization': `Bearer ${obterTokenAtual()}` }
         });
-        
-        if (!res.ok) {
-            const erroData = await res.json().catch(() => ({}));
-            mostrarMensagem(erroData.erro || "Erro ao carregar lista de conferências.", "error");
-            return;
-        }
+
+        if (!res.ok) return;
 
         const conferencias = await res.json();
         const select = document.getElementById('selectConferencia');
-        select.innerHTML = '';
+        
+        if (select) {
+            select.innerHTML = '';
+            if (!Array.isArray(conferencias) || conferencias.length === 0) {
+                select.innerHTML = '<option value="">Nenhuma conferência em andamento</option>';
+            } else {
+                conferencias.forEach(c => {
+                    const total = c.pacotes?.length || 0;
+                    const pend = c.pacotes?.filter(p => p.status !== 'ok' && p.status !== 'liberado_divergente').length || 0;
+                    select.innerHTML += `<option value="${c.id}">${c.transportadora} - ${c.status.toUpperCase()} (${pend} restantes de ${total})</option>`;
+                });
+            }
 
-        if (!Array.isArray(conferencias) || conferencias.length === 0) {
-            select.innerHTML = '<option value="">Nenhuma conferência em andamento</option>';
-            atualizarListaHistorico([]);
-            return;
+            if (selecionarId) {
+                select.value = selecionarId;
+                await carregarDetalhesConferencia(selecionarId);
+            }
         }
-
-        conferencias.forEach(c => {
-            const total = c.pacotes?.length || 0;
-            const pendentes = c.pacotes?.filter(p => p.status !== 'ok' && p.status !== 'liberado_divergente').length || 0;
-            select.innerHTML += `<option value="${c.id}">${c.transportadora} - ${c.status.toUpperCase()} (${pendentes} restantes de ${total})</option>`;
-        });
-
+        
         atualizarListaHistorico(conferencias);
-
-        if (selecionarId) {
-            select.value = selecionarId;
-            await carregarDetalhesConferencia(selecionarId);
-        } else if (!conferenciaAtual && conferencias.length > 0) {
-            select.value = conferencias[0].id;
-            await carregarDetalhesConferencia(conferencias[0].id);
-        }
-    } catch {
-        mostrarMensagem("Erro de conexão ao carregar conferências.", "error");
+    } catch (err) {
+        console.error("Falha ao carregar conferências ativas.", err);
     }
 }
 
 async function retomarConferencia() {
     const select = document.getElementById('selectConferencia');
-    const id = select ? select.value : null;
-
+    if (!select) return;
+    
+    const id = select.value;
     if (!id) {
         mostrarMensagem("Selecione uma conferência para retomar.", "warning");
         return;
@@ -294,7 +312,7 @@ async function retomarConferencia() {
         await carregarDetalhesConferencia(id);
         await carregarConferenciasAtivas(id);
     } catch {
-        mostrarMensagem("Falha de conexão ao retomar conferência.", "error");
+        mostrarMensagem("Falha de ligação ao retomar conferência.", "error");
     }
 }
 
@@ -304,20 +322,18 @@ async function carregarDetalhesConferencia(id) {
         const res = await fetch(`${API_BASE}/conferencias/${id}`, {
             headers: { 'Authorization': `Bearer ${obterTokenAtual()}` }
         });
-        
-        if (!res.ok) {
-            const erroData = await res.json().catch(() => ({}));
-            mostrarMensagem(erroData.erro || "Erro ao buscar conferência.", "error");
-            return;
-        }
+
+        if (!res.ok) return;
 
         conferenciaAtual = await res.json();
 
-        document.getElementById('transportadoraAtual').textContent = `Transportadora: ${conferenciaAtual.transportadora}`;
-        document.getElementById('btnInterromper').disabled = false;
-        document.getElementById('btnFinalizar').disabled = false;
-        document.getElementById('btnResetRemessa').disabled = false;
-        document.getElementById('btnExcluirPacotes').disabled = false;
+        const tituloT = document.getElementById('transportadoraAtual');
+        if (tituloT) tituloT.textContent = `Transportadora: ${conferenciaAtual.transportadora}`;
+        
+        ['btnInterromper', 'btnFinalizar', 'btnResetRemessa', 'btnExcluirPacotes'].forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn) btn.disabled = false;
+        });
 
         renderizarTabela();
         atualizarContadores();
@@ -328,54 +344,64 @@ async function carregarDetalhesConferencia(id) {
 }
 
 async function recarregarConferenciaAtual() {
-    if (conferenciaAtual) {
-        await carregarDetalhesConferencia(conferenciaAtual.id);
-    }
+    if (conferenciaAtual) await carregarDetalhesConferencia(conferenciaAtual.id);
 }
 
-// 4. TABELA E CONTADORES
 function renderizarTabela() {
     const tbody = document.getElementById('listaPacotes');
+    if (!tbody) return;
+
     tbody.innerHTML = '';
 
     if (!conferenciaAtual || !conferenciaAtual.pacotes || conferenciaAtual.pacotes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">Nenhum pacote carregado nesta conferência.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">Nenhum pacote carregado nesta conferência.</td></tr>';
         return;
     }
 
     let pacotes = conferenciaAtual.pacotes;
-
-    if (filtroAtivo) {
-        pacotes = pacotes.filter(p => p.status !== 'ok' && p.status !== 'liberado_divergente');
-    }
-
+    if (filtroAtivo) pacotes = pacotes.filter(p => p.status !== 'ok' && p.status !== 'liberado_divergente');
     if (filtroTermo) {
         pacotes = pacotes.filter(p =>
             String(p.numero_nf).toLowerCase().includes(filtroTermo) ||
             String(p.chave_acesso).toLowerCase().includes(filtroTermo) ||
-            String(p.razao_social || '').toLowerCase().includes(filtroTermo)
+            String(p.razao_social || '').toLowerCase().includes(filtroTermo) ||
+            String(p.descricao_produto || '').toLowerCase().includes(filtroTermo)
         );
     }
 
     pacotes.forEach(p => {
-        let classeLinha = '';
-        if (p.status === 'ok') classeLinha = 'status-ok';
-        else if (p.status === 'duplicado') classeLinha = 'status-duplicate';
-        else if (p.status === 'divergente_peso' || p.status === 'bloqueado') classeLinha = 'blink-error';
+        let badgeStatus = '';
+        let rowClass = '';
+
+        switch (p.status) {
+            case 'ok': badgeStatus = '<span class="status-badge badge-ok"><i class="fas fa-check"></i> OK</span>'; rowClass = 'row-ok'; break;
+            case 'liberado_divergente': badgeStatus = '<span class="status-badge badge-warning" title="Liberado por superior"><i class="fas fa-user-shield"></i> LIB. DIVERGENTE</span>'; rowClass = 'row-warning'; break;
+            case 'divergente_peso': badgeStatus = '<span class="status-badge badge-danger"><i class="fas fa-weight-hanging"></i> PESO DIVERG.</span>'; rowClass = 'row-danger'; break;
+            case 'bloqueado': badgeStatus = '<span class="status-badge badge-locked"><i class="fas fa-lock"></i> BLOQUEADO</span>'; rowClass = 'row-locked'; break;
+            case 'duplicado': badgeStatus = '<span class="status-badge badge-duplicate"><i class="fas fa-copy"></i> DUPLICADO</span>'; rowClass = 'row-duplicate'; break;
+            default: badgeStatus = '<span class="status-badge badge-pending"><i class="fas fa-clock"></i> PENDENTE</span>'; rowClass = '';
+        }
+
+        const chaveAcesso = String(p.chave_acesso);
+        const chaveFormatada = chaveAcesso.length === 44 ? `${chaveAcesso.substring(0, 4)} ... ${chaveAcesso.substring(20, 24)} ... ${chaveAcesso.substring(40)}` : chaveAcesso;
+        const produtoLimpo = (p.descricao_produto || '').replace(/[\uFFFD]/g, '°');
+        const clienteLimpo = (p.razao_social || '').replace(/[\uFFFD]/g, '');
 
         tbody.innerHTML += `
-            <tr class="${classeLinha}">
-                <td class="admin-only"><input type="checkbox" class="chk-pacote" value="${p.id}"></td>
-                <td><strong>${p.numero_nf}</strong></td>
-                <td><code style="font-size:0.85em;">${p.chave_acesso}</code></td>
-                <td>${p.razao_social || '-'}</td>
-                <td>${p.descricao_produto || '-'}</td>
-                <td>${p.uf}</td>
-                <td><strong>${p.status.toUpperCase()}</strong></td>
-                <td>${p.possui_guia_icms ? '<span style="color:#2563eb; font-weight:bold;">SIM</span>' : 'NÃO'}</td>
-                <td>${p.peso_esperado_g ? Number(p.peso_esperado_g).toFixed(2) : '-'}</td>
-                <td>${p.peso_lido_g ? Number(p.peso_lido_g).toFixed(2) : '-'}</td>
-                <td>#${p.remessa_id}</td>
+            <tr class="${rowClass}">
+                <td class="admin-only col-center"><input type="checkbox" class="chk-pacote" value="${p.id}"></td>
+                <td class="col-nf"><strong>${p.numero_nf}</strong></td>
+                <td class="col-chave" title="Clique para copiar: ${chaveAcesso}" onclick="navigator.clipboard.writeText('${chaveAcesso}'); mostrarMensagem('Chave copiada!', 'info')">
+                    <code>${chaveFormatada}</code>
+                </td>
+                <td class="col-cliente" title="${clienteLimpo}">${clienteLimpo || '<span class="text-muted">-</span>'}</td>
+                <td class="col-produto" title="${produtoLimpo}">${produtoLimpo || '<span class="text-muted">-</span>'}</td>
+                <td class="col-center"><strong>${p.uf}</strong></td>
+                <td class="col-center">${badgeStatus}</td>
+                <td class="col-center">${p.possui_guia_icms ? '<span class="badge-guia">GUIA DIFAL</span>' : '<span class="text-muted">NÃO</span>'}</td>
+                <td class="col-num">${p.peso_esperado_g ? Number(p.peso_esperado_g).toFixed(0) + ' g' : '-'}</td>
+                <td class="col-num"><strong>${p.peso_lido_g ? Number(p.peso_lido_g).toFixed(0) + ' g' : '-'}</strong></td>
+                <td class="col-center"><span class="badge-remessa">#${p.remessa_id}</span></td>
             </tr>
         `;
     });
@@ -383,18 +409,40 @@ function renderizarTabela() {
 }
 
 function atualizarContadores() {
+    const contadorEl = document.getElementById('contador');
+    if (!contadorEl) return;
+
     if (!conferenciaAtual || !conferenciaAtual.pacotes) {
-        document.getElementById('contador').textContent = '0 / 0';
+        contadorEl.innerHTML = `
+            <div class="progress-info">
+                <span class="progress-title">Nenhuma conferência em andamento</span>
+                <span class="progress-percent">0%</span>
+            </div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 0%"></div></div>
+        `;
         return;
     }
+
     const conferidos = conferenciaAtual.pacotes.filter(p => p.status === 'ok' || p.status === 'liberado_divergente').length;
     const total = conferenciaAtual.pacotes.length;
-    document.getElementById('contador').textContent = `${conferidos} / ${total}`;
+    const porcentagem = total > 0 ? Math.round((conferidos / total) * 100) : 0;
+
+    contadorEl.innerHTML = `
+        <div class="progress-info">
+            <span class="progress-title">Conferência em Andamento: <strong>${conferidos} de ${total} volumes</strong></span>
+            <span class="progress-percent">${porcentagem}%</span>
+        </div>
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width: ${porcentagem}%"></div>
+        </div>
+    `;
 }
 
 function filtrarPendentes() {
     filtroAtivo = !filtroAtivo;
     const btn = document.getElementById('btnFiltroPendentes');
+    if (!btn) return;
+
     if (filtroAtivo) {
         btn.classList.add('active');
         btn.textContent = "Mostrando Apenas Pendentes";
@@ -410,7 +458,7 @@ function atualizarListaHistorico(conferencias) {
     if (!ul) return;
     ul.innerHTML = '';
     if (!conferencias || !conferencias.length) {
-        ul.innerHTML = '<li>Nenhuma conferência registrada.</li>';
+        ul.innerHTML = '<li>Nenhuma conferência registada.</li>';
         return;
     }
     conferencias.slice(0, 5).forEach(c => {
@@ -418,9 +466,9 @@ function atualizarListaHistorico(conferencias) {
     });
 }
 
-// 5. MODAIS
 function abrirModalDivergencia(codigo, detalhes) {
     const modal = document.getElementById('modalDivergenciaPeso');
+    if (!modal) return;
     document.getElementById('detalhesDivergencia').innerHTML = `
         <p><strong>Pacote / NF:</strong> ${codigo}</p>
         <p><strong>Peso Esperado:</strong> ${detalhes.peso_esperado} g</p>
@@ -432,15 +480,19 @@ function abrirModalDivergencia(codigo, detalhes) {
 }
 
 function fecharModalDivergencia() {
-    document.getElementById('modalDivergenciaPeso').classList.remove('visible');
+    const modal = document.getElementById('modalDivergenciaPeso');
+    if (modal) modal.classList.remove('visible');
     cancelarCaixaAtiva();
-    document.getElementById('codigoInput').focus();
+    const input = document.getElementById('codigoInput');
+    if(input) input.focus();
 }
 
 function abrirModalBloqueio(codigo, detalhes) {
     const modal = document.getElementById('modalBloqueioSuperior');
+    if (!modal) return;
     const pacote = conferenciaAtual.pacotes.find(p => p.chave_acesso === codigo || p.numero_nf === codigo);
-    document.getElementById('liberacaoPacoteId').value = pacote ? pacote.id : '';
+    const idInput = document.getElementById('liberacaoPacoteId');
+    if (idInput) idInput.value = pacote ? pacote.id : '';
     document.getElementById('detalhesBloqueio').innerHTML = `
         <p><strong>Pacote:</strong> ${codigo}</p>
         <p><strong>Peso Esperado:</strong> ${detalhes.peso_esperado} g</p>
@@ -452,10 +504,13 @@ function abrirModalBloqueio(codigo, detalhes) {
 }
 
 function fecharModalBloqueio() {
-    document.getElementById('modalBloqueioSuperior').classList.remove('visible');
-    document.getElementById('formLiberacaoSuperior').reset();
+    const modal = document.getElementById('modalBloqueioSuperior');
+    if (modal) modal.classList.remove('visible');
+    const form = document.getElementById('formLiberacaoSuperior');
+    if (form) form.reset();
     cancelarCaixaAtiva();
-    document.getElementById('codigoInput').focus();
+    const input = document.getElementById('codigoInput');
+    if(input) input.focus();
 }
 
 async function submeterLiberacaoSuperior(e) {
@@ -470,10 +525,7 @@ async function submeterLiberacaoSuperior(e) {
     try {
         const res = await fetch(`${API_BASE}/conferencias/liberar-divergente`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${obterTokenAtual()}`
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${obterTokenAtual()}` },
             body: JSON.stringify(payload)
         });
 
@@ -487,12 +539,13 @@ async function submeterLiberacaoSuperior(e) {
         fecharModalBloqueio();
         await recarregarConferenciaAtual();
     } catch {
-        mostrarMensagem("Erro ao conectar à API para autorização.", "error");
+        mostrarMensagem("Erro de ligação à API para autorização.", "error");
     }
 }
 
 function abrirModalDuplicado(pacote) {
     const modal = document.getElementById('duplicateModal');
+    if(!modal) return;
     const input = document.getElementById('modalConfirmationInput');
     document.getElementById('modalDetails').innerHTML = `
         <p><strong>NF:</strong> ${pacote.numero_nf}</p>
@@ -501,8 +554,10 @@ function abrirModalDuplicado(pacote) {
         <p><strong>Data da Conferência:</strong> ${new Date(pacote.data_conferido).toLocaleString()}</p>
     `;
     modal.classList.add('visible');
-    input.value = '';
-    input.focus();
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
 
     const handler = (e) => {
         if (e.key === 'Enter') {
@@ -510,14 +565,15 @@ function abrirModalDuplicado(pacote) {
                 modal.classList.remove('visible');
                 input.removeEventListener('keypress', handler);
                 cancelarCaixaAtiva();
-                document.getElementById('codigoInput').focus();
+                const codeInput = document.getElementById('codigoInput');
+                if(codeInput) codeInput.focus();
             } else {
                 mostrarMensagem("Digite DUPLICADO para confirmar.", "warning");
                 input.value = '';
             }
         }
     };
-    input.addEventListener('keypress', handler);
+    if (input) input.addEventListener('keypress', handler);
 }
 
 function aplicarEfeitoVisual(tipo) {
@@ -530,7 +586,6 @@ function aplicarEfeitoVisual(tipo) {
     }, 750);
 }
 
-// 6. CONTROLES ADMINISTRATIVOS
 async function interromperConferencia() {
     if (!conferenciaAtual) return;
     if (!confirm(`Deseja interromper a conferência da ${conferenciaAtual.transportadora}?`)) return;
@@ -539,12 +594,23 @@ async function interromperConferencia() {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${obterTokenAtual()}` }
     });
+
     mostrarMensagem("Conferência interrompida e salva.", "info");
+
     conferenciaAtual = null;
-    document.getElementById('transportadoraAtual').textContent = "Transportadora: Nenhuma Selecionada";
-    document.getElementById('btnInterromper').disabled = true;
-    document.getElementById('btnFinalizar').disabled = true;
-    renderizarTabela();
+    cancelarCaixaAtiva();
+
+    const titulo = document.getElementById('transportadoraAtual');
+    if(titulo) titulo.textContent = "Transportadora: Nenhuma Selecionada";
+    
+    ['btnInterromper', 'btnFinalizar', 'btnResetRemessa', 'btnExcluirPacotes'].forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) btn.disabled = true;
+    });
+
+    const tbody = document.getElementById('listaPacotes');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">Nenhuma conferência em andamento no momento. Selecione uma transportadora e clique em "Retomar" ou importe um JSON.</td></tr>';
+
     atualizarContadores();
     carregarConferenciasAtivas();
 }
@@ -566,10 +632,19 @@ async function finalizarConferencia() {
 
     mostrarMensagem("Conferência finalizada com sucesso!", "success");
     conferenciaAtual = null;
-    document.getElementById('transportadoraAtual').textContent = "Transportadora: Nenhuma Selecionada";
-    document.getElementById('btnInterromper').disabled = true;
-    document.getElementById('btnFinalizar').disabled = true;
-    renderizarTabela();
+    cancelarCaixaAtiva();
+
+    const titulo = document.getElementById('transportadoraAtual');
+    if(titulo) titulo.textContent = "Transportadora: Nenhuma Selecionada";
+    
+    ['btnInterromper', 'btnFinalizar', 'btnResetRemessa', 'btnExcluirPacotes'].forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) btn.disabled = true;
+    });
+
+    const tbody = document.getElementById('listaPacotes');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">Nenhuma conferência selecionada.</td></tr>';
+
     atualizarContadores();
     carregarConferenciasAtivas();
 }
@@ -604,10 +679,7 @@ async function excluirPacotesSelecionados() {
 
     const res = await fetch(`${API_BASE}/conferencias/pacotes`, {
         method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${obterTokenAtual()}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${obterTokenAtual()}` },
         body: JSON.stringify({ ids: marcados })
     });
 

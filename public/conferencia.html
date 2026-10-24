@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conferência - Euroart</title>
+    <title>Conferência em Execução - Euroart</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="modal.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -12,78 +12,161 @@
 <body>
     <div class="app-layout">
         <main class="main-content">
-            <div class="container" style="margin: 0; max-width: 100%;">
+            <div class="container">
                 <div class="header-with-logo">
+                    <img src="images/euro.png" alt="Logo Euroart" class="logo" onerror="this.style.display='none'">
                     <h1>Conferência em Execução</h1>
                 </div>
 
                 <div class="feedback-message" id="feedbackMessage"></div>
 
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 260px; background: #0f172a; color: #fff; padding: 15px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="font-size: 0.85em; text-transform: uppercase; color: #94a3b8;">1º BIPE - CAIXA ATIVA:</span>
+                            <h3 id="displayCaixaAtiva" style="margin: 0; color: #38bdf8; font-size: 1.3em;">Aguardando bipagem...</h3>
+                            <span id="displayPesoTara" style="font-size: 0.85em; color: #cbd5e1;">Tara: 0.00g</span>
+                        </div>
+                        <button onclick="cancelarCaixaAtiva()" id="btnCancelarCaixa" style="display: none; background: #ef4444; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Limpar</button>
+                    </div>
+
+                    <div style="flex: 1; min-width: 260px; background: #0f172a; color: #fff; padding: 15px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="font-size: 0.85em; text-transform: uppercase; color: #94a3b8;">BALANÇA ESP32 (TEMPO REAL):</span>
+                            <h3 id="displayPesoBalanca" style="margin: 0; color: #22c55e; font-size: 1.6em;">0.00 g</h3>
+                        </div>
+                        <div style="text-align: right;">
+                            <label style="font-size: 0.75em; color: #94a3b8; display: block;">Simular Peso (g):</label>
+                            <input type="number" id="simuladorPeso" placeholder="Ex: 250" style="width: 100px; padding: 5px; border-radius: 4px; border: 1px solid #334155; background: #1e293b; color: #fff; text-align: center;">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="input-section">
-                    <label for="jsonInput" class="button-label">Importar JSON (Remessa)</label>
-                    <input type="file" id="jsonInput" accept=".json" style="display: none;">
-                    <input type="text" id="codigoInput" placeholder="Bipar NF ou Chave de Acesso">
+                    <label for="jsonInput" class="button-label"><i class="fas fa-file-import"></i> Importar JSON</label>
+                    <input type="file" id="jsonInput" accept=".json" style="display: none;" onchange="handleFileImport(event)">
+                    <input type="text" id="codigoInput" placeholder="1º Bipe: Caixa (Barcode) | 2º Bipe: NF ou Chave de Acesso" autofocus autocomplete="off">
                 </div>
 
                 <div class="conferencia-select">
-                    <label for="selectConferencia">Retomar Conferência:</label>
-                    <select id="selectConferencia" disabled>
-                        <option value="">Nenhuma em andamento</option>
+                    <label for="selectConferencia">Retomar / Alternar Conferência:</label>
+                    <select id="selectConferencia">
+                        <option value="">Carregando conferências ativas...</option>
                     </select>
-                    <button onclick="retomarConferencia()" class="btn-retomar">Retomar</button>
+                    <button onclick="retomarConferencia()" class="btn-retomar"><i class="fas fa-sync"></i> Retomar</button>
                 </div>
 
-                <h2 id="transportadoraAtual"></h2>
-                <div class="summary">
-                    <p>Pacotes Conferidos: <span id="contador">0/0</span></p>
+                <h2 id="transportadoraAtual" style="margin-top: 15px;">Transportadora: Nenhuma Selecionada</h2>
+
+                <div class="summary" id="contador">
+                    <div class="progress-info">
+                        <span class="progress-title">Nenhuma conferência em andamento</span>
+                        <span class="progress-percent">0%</span>
+                    </div>
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 0%"></div></div>
                 </div>
 
                 <div class="controls">
-                    <button onclick="interromperConferencia()" class="btn-interromper" disabled>Interromper</button>
-                    <button onclick="reiniciarUltimaRemessa()" class="btn-reset" disabled>Remover Última Remessa</button>
-                    <button onclick="excluirPacotesSelecionados()" class="btn-excluir" disabled>Excluir Selecionados</button>
-                    <button onclick="finalizarConferencia()" class="btn-finalizar" disabled>Finalizar</button>
+                    <button onclick="interromperConferencia()" class="btn-interromper" id="btnInterromper" disabled><i class="fas fa-pause"></i> Interromper</button>
+                    <button onclick="finalizarConferencia()" class="btn-finalizar" id="btnFinalizar" disabled><i class="fas fa-check-circle"></i> Finalizar</button>
+                    <button onclick="removerUltimaRemessa()" class="btn-reset admin-only" id="btnResetRemessa" disabled><i class="fas fa-undo"></i> Remover Última Remessa</button>
+                    <button onclick="excluirPacotesSelecionados()" class="btn-excluir admin-only" id="btnExcluirPacotes" disabled><i class="fas fa-trash"></i> Excluir Selecionados</button>
+                    <button onclick="window.location.href='historico.html'" class="btn-historico"><i class="fas fa-history"></i> Ver Histórico</button>
+                    <button onclick="window.location.href='minutas.html'" class="btn-minutas"><i class="fas fa-file-alt"></i> Ver Minutas</button>
+                    <button onclick="window.location.href='parametrizacao.html'" class="btn-retomar admin-only"><i class="fas fa-boxes"></i> Parametrização</button>
                 </div>
-                
+
                 <div class="filter-section">
-                    <input type="text" id="filtroNf" placeholder="Filtrar por NF...">
-                    <button onclick="filtrarPendentes()" class="btn-pendentes">Pendentes de Conferência</button>
+                    <input type="text" id="filtroNf" placeholder="Filtrar por NF, Chave ou Cliente...">
+                    <button onclick="filtrarPendentes()" class="btn-pendentes" id="btnFiltroPendentes">Pendentes de Conferência</button>
                 </div>
 
                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
-                                <th>Excluir</th>
+                                <th class="admin-only" style="width: 40px;">Excluir</th>
                                 <th>NF</th>
                                 <th>Chave Acesso</th>
                                 <th>Cliente</th>
                                 <th>Produto</th>
                                 <th>UF</th>
                                 <th>Status</th>
+                                <th>Guia ICMS</th>
+                                <th>Peso Esp. (g)</th>
+                                <th>Peso Real (g)</th>
                                 <th>Remessa</th>
                             </tr>
                         </thead>
-                        <tbody id="listaPacotes"></tbody>
+                        <tbody id="listaPacotes">
+                            <tr><td colspan="11" class="text-center py-4 text-muted">Nenhuma conferência selecionada. Selecione uma transportadora e clique em "Retomar" ou importe um JSON.</td></tr>
+                        </tbody>
                     </table>
                 </div>
+
+                <h4>Últimas Conferências no Sistema:</h4>
+                <div class="history-summary">
+                    <ul id="listaHistorico">
+                        <li>Carregando conferências recentes...</li>
+                    </ul>
+                </div>
             </div>
+
+            <footer>
+                <div id="versiculo-do-dia"></div>
+                <p>&copy; 2025 Davi Françozo & Felipe Campelo, todos os direitos reservados.</p>
+            </footer>
         </main>
     </div>
-    
+
+    <!-- Modais de Operação -->
+    <div id="modalDivergenciaPeso" class="modal-overlay">
+        <div class="modal-content">
+            <h2 class="modal-title-danger"><i class="fas fa-exclamation-triangle"></i> Atenção: Peso Divergente!</h2>
+            <div id="detalhesDivergencia" class="modal-box-info"></div>
+            <p style="font-size: 1.1em; font-weight: 500; margin-bottom: 20px;">
+                <strong>AÇÃO OBRIGATÓRIA:</strong> Abra fisicamente a embalagem para conferir os itens antes de tentar bipar novamente.
+            </p>
+            <button onclick="fecharModalDivergencia()" class="modal-action-btn btn-danger-action">Entendido, vou verificar</button>
+        </div>
+    </div>
+
+    <div id="modalBloqueioSuperior" class="modal-overlay">
+        <div class="modal-content">
+            <h2 class="modal-title-danger"><i class="fas fa-lock"></i> Pacote Bloqueado</h2>
+            <div id="detalhesBloqueio" class="modal-box-info"></div>
+            <p style="font-size: 0.95em; color: #475569; margin-bottom: 15px;">
+                Peso divergente na 2ª tentativa. Requer autorização de um superior:
+            </p>
+            <form id="formLiberacaoSuperior" onsubmit="submeterLiberacaoSuperior(event)">
+                <input type="hidden" id="liberacaoPacoteId">
+                <input type="email" id="emailSuperior" placeholder="E-mail do Superior" required style="width: 90%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                <input type="password" id="senhaSuperior" placeholder="Senha do Superior" required style="width: 90%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                <textarea id="justificativaSuperior" placeholder="Justificativa do envio com ressalva" required style="width: 90%; padding: 10px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #cbd5e1; height: 60px;"></textarea>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button type="submit" class="modal-action-btn btn-success-action">Autorizar Envio</button>
+                    <button type="button" onclick="fecharModalBloqueio()" class="modal-action-btn" style="background: #94a3b8; color: #fff;">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="duplicateModal" class="modal-overlay">
         <div class="modal-content">
-            <h2 class="modal-title">Atenção: Pacote Duplicado!</h2>
-            <div id="modalDetails" class="modal-details"></div>
-            <p class="modal-instruction">Para continuar, digite a palavra <strong>DUPLICADO</strong> no campo abaixo e pressione Enter.</p>
-            <input type="text" id="modalConfirmationInput" class="modal-input" placeholder="Digite DUPLICADO">
+            <h2 class="modal-title-warning"><i class="fas fa-clone"></i> Atenção: Pacote Duplicado!</h2>
+            <div id="modalDetails" class="modal-box-info" style="background: #fffbeb; border-color: #fde68a; color: #92400e;"></div>
+            <p style="font-size: 1.05em; margin-bottom: 15px;">Para continuar, digite <strong>DUPLICADO</strong> abaixo e pressione Enter:</p>
+            <input type="text" id="modalConfirmationInput" class="modal-input" placeholder="Digite DUPLICADO" style="width: 80%; padding: 10px; text-align: center; text-transform: uppercase;">
         </div>
     </div>
 
     <script src="utils.js"></script>
-    <script src="script.js"></script>
     <script src="menu.js"></script>
-    <script src="frases.js"></script>
-    <script>carregarMenu('menu-conferencia');</script>
+    <script>
+        if (typeof carregarMenu === 'function') {
+            carregarMenu('menu-conferencia');
+        }
+    </script>
+    <script src="script.js"></script>
 </body>
 </html>

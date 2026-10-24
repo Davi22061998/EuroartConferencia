@@ -13,44 +13,55 @@ import Usuario from '../models/Usuario';
 import BalancaService from '../services/BalancaService';
 
 export class ConferenciaController {
-  // 1. IMPORTAR REMESSA (JSON)
+  // 1. IMPORTAR REMESSA (JSON) COM VALIDAÇÕES E PROTEÇÃO DE DUPLICIDADE
   static async importarRemessa(req: Request, res: Response): Promise<void> {
     const t = await sequelize.transaction();
     try {
-      const { arquivo_nome, pacotes } = req.body;
-      const usuarioLogado = (req as any).usuario;
+      const { arquivo_nome, pacotes, conferencia_ativa_id } = req.body;
+      const usuarioLogado = (req as any).usuario || (req as any).user;
 
       if (!usuarioLogado) {
         await t.rollback();
-        res.status(401).json({ erro: 'Usuário não autenticado.' });
+        res.status(401).json({ erro: 'Utilizador não autenticado.' });
         return;
       }
 
       if (!arquivo_nome || !Array.isArray(pacotes) || pacotes.length === 0) {
         await t.rollback();
-        res.status(400).json({ erro: 'Arquivo JSON inválido ou lista de pacotes vazia.' });
+        res.status(400).json({ erro: 'Ficheiro JSON inválido ou lista de pacotes vazia.' });
         return;
       }
 
-      // Validação: Transportadora única no arquivo JSON
-      const transportadoras = [...new Set(pacotes.map((p: any) => p.transportadora).filter(Boolean))];
-      if (transportadoras.length === 0) {
+      const transportadorasArquivo = [...new Set(pacotes.map((p: any) => p.transportadora).filter(Boolean))];
+      if (transportadorasArquivo.length === 0) {
         await t.rollback();
-        res.status(400).json({ erro: 'Nenhuma transportadora identificada no JSON.' });
+        res.status(400).json({ erro: 'Nenhuma transportadora identificada no ficheiro JSON importado.' });
         return;
       }
-      if (transportadoras.length > 1) {
+      if (transportadorasArquivo.length > 1) {
         await t.rollback();
-        res.status(400).json({ erro: 'O arquivo contém múltiplas transportadoras. Cada remessa deve conter apenas uma transportadora.' });
+        res.status(400).json({
+          erro: `Ficheiro inválido: contém múltiplas transportadoras (${transportadorasArquivo.join(', ')}). Cada remessa deve conter apenas uma transportadora.`
+        });
         return;
       }
 
-      const transportadora = transportadoras[0] as string;
+      const transportadoraArquivo = transportadorasArquivo[0] as string;
 
-      // Busca conferência aberta ou interrompida daquela transportadora
+      if (conferencia_ativa_id) {
+        const confAtual = await Conferencia.findByPk(Number(conferencia_ativa_id), { transaction: t });
+        if (confAtual && confAtual.status === 'em_andamento' && confAtual.transportadora !== transportadoraArquivo) {
+          await t.rollback();
+          res.status(400).json({
+            erro: `A conferência ativa pertence à "${confAtual.transportadora}". O ficheiro importado pertence à "${transportadoraArquivo}". Interrompa ou finalize a conferência atual antes de importar pacotes de outra transportadora.`
+          });
+          return;
+        }
+      }
+
       let conferencia = await Conferencia.findOne({
         where: {
-          transportadora,
+          transportadora: transportadoraArquivo,
           status: { [Op.in]: ['em_andamento', 'interrompida'] }
         },
         transaction: t
@@ -58,7 +69,7 @@ export class ConferenciaController {
 
       if (!conferencia) {
         conferencia = await Conferencia.create({
-          transportadora,
+          transportadora: transportadoraArquivo,
           status: 'em_andamento',
           usuario_id: usuarioLogado.id,
           data_inicio: new Date()
@@ -68,7 +79,6 @@ export class ConferenciaController {
         await conferencia.save({ transaction: t });
       }
 
-      // Trava de integridade: Arquivo com mesmo nome já importado nesta conferência
       const remessaExistente = await Remessa.findOne({
         where: {
           conferencia_id: conferencia.id,
@@ -79,18 +89,46 @@ export class ConferenciaController {
 
       if (remessaExistente) {
         await t.rollback();
-        res.status(409).json({ erro: `O arquivo "${arquivo_nome}" já foi importado anteriormente nesta conferência.` });
+        res.status(409).json({
+          erro: `O ficheiro "${arquivo_nome}" já foi importado anteriormente na Remessa nº ${remessaExistente.numero_remessa} desta conferência.`
+        });
         return;
       }
 
-      // Determina o número sequencial da remessa
+      const numerosNfJson = pacotes.map((p: any) => String(p.numero_nf));
+      const chavesAcessoJson = pacotes.map((p: any) => String(p.chave_acesso));
+
+      const pacotesExistentesNoBanco = await Pacote.findAll({
+        where: {
+          [Op.or]: [
+            { numero_nf: { [Op.in]: numerosNfJson } },
+            { chave_acesso: { [Op.in]: chavesAcessoJson } }
+          ]
+        },
+        transaction: t
+      });
+
+      const nfsExistentesSet = new Set(pacotesExistentesNoBanco.map(p => p.numero_nf));
+      const chavesExistentesSet = new Set(pacotesExistentesNoBanco.map(p => p.chave_acesso));
+
+      const todasRepetidas = pacotes.every((p: any) =>
+        chavesExistentesSet.has(String(p.chave_acesso)) || nfsExistentesSet.has(String(p.numero_nf))
+      );
+
+      if (todasRepetidas) {
+        await t.rollback();
+        res.status(400).json({
+          erro: 'Todas as notas fiscais deste ficheiro já foram importadas e conferidas no sistema.'
+        });
+        return;
+      }
+
       const totalRemessas = await Remessa.count({
         where: { conferencia_id: conferencia.id },
         transaction: t
       });
       const proximoNumeroRemessa = totalRemessas + 1;
 
-      // Criação da Remessa
       const novaRemessa = await Remessa.create({
         conferencia_id: conferencia.id,
         numero_remessa: proximoNumeroRemessa,
@@ -99,40 +137,20 @@ export class ConferenciaController {
         data_importacao: new Date()
       }, { transaction: t });
 
-      // Mapeamento de UFs com exigência de DIFAL
       const regrasIcms = await RegraIcms.findAll({ transaction: t });
       const ufsComGuia = new Set(regrasIcms.filter(r => r.exige_guia).map(r => r.uf.toUpperCase()));
 
-      // Coleta todas as NFs do JSON para validação em lote
-      const numerosNfJson = pacotes.map((p: any) => String(p.numero_nf));
-      const chavesAcessoJson = pacotes.map((p: any) => String(p.chave_acesso));
-
-      // Busca pacotes já existentes em conferências abertas
-      const pacotesExistentes = await Pacote.findAll({
-        where: {
-          [Op.or]: [
-            { numero_nf: { [Op.in]: numerosNfJson } },
-            { chave_acesso: { [Op.in]: chavesAcessoJson } }
-          ]
-        },
-        include: [{
-          model: Conferencia,
-          as: 'conferencia',
-          where: { status: { [Op.in]: ['em_andamento', 'interrompida'] } }
-        }],
-        transaction: t
-      });
-
-      const nfsExistentesSet = new Set(pacotesExistentes.map(p => p.numero_nf));
-      const chavesExistentesSet = new Set(pacotesExistentes.map(p => p.chave_acesso));
-
       let adicionados = 0;
-      let duplicados = 0;
+      let duplicadosIgnorados = 0;
 
       for (const p of pacotes) {
         const nfStr = String(p.numero_nf);
         const chaveStr = String(p.chave_acesso);
-        const isDuplicado = nfsExistentesSet.has(nfStr) || chavesExistentesSet.has(chaveStr);
+
+        if (nfsExistentesSet.has(nfStr) || chavesExistentesSet.has(chaveStr)) {
+          duplicadosIgnorados++;
+          continue;
+        }
 
         const pacoteCriado = await Pacote.create({
           conferencia_id: conferencia.id,
@@ -142,20 +160,15 @@ export class ConferenciaController {
           razao_social: p.razao_social || 'Consumidor Final',
           descricao_produto: p.itens?.[0]?.descricao_produto || '',
           uf: (p.uf || 'SP').toUpperCase(),
-          status: isDuplicado ? 'duplicado' : 'pendente',
+          status: 'pendente',
           possui_guia_icms: ufsComGuia.has((p.uf || '').toUpperCase()),
           tentativas_peso: 0
         }, { transaction: t });
 
-        if (isDuplicado) {
-          duplicados++;
-        } else {
-          adicionados++;
-          nfsExistentesSet.add(nfStr);
-          chavesExistentesSet.add(chaveStr);
-        }
+        nfsExistentesSet.add(nfStr);
+        chavesExistentesSet.add(chaveStr);
+        adicionados++;
 
-        // Cadastro dos itens do lastro exclusivo da NF
         if (Array.isArray(p.itens) && p.itens.length > 0) {
           const itensParaCriar = p.itens.map((item: any) => ({
             pacote_id: pacoteCriado.id,
@@ -169,13 +182,18 @@ export class ConferenciaController {
 
       await t.commit();
 
+      let mensagemSucesso = `Remessa #${proximoNumeroRemessa} importada com sucesso (${adicionados} novos pacotes adicionados).`;
+      if (duplicadosIgnorados > 0) {
+        mensagemSucesso += ` ${duplicadosIgnorados} pacote(s) repetido(s) ignorado(s).`;
+      }
+
       res.status(201).json({
-        mensagem: `Remessa ${proximoNumeroRemessa} importada com sucesso!`,
+        mensagem: mensagemSucesso,
         conferencia_id: conferencia.id,
         remessa_id: novaRemessa.id,
-        transportadora,
+        transportadora: transportadoraArquivo,
         pacotes_adicionados: adicionados,
-        pacotes_duplicados: duplicados
+        pacotes_duplicados: duplicadosIgnorados
       });
     } catch (error: any) {
       await t.rollback();
@@ -183,7 +201,6 @@ export class ConferenciaController {
     }
   }
 
-  // 2. BIPAGEM DE CAIXA + CHAVE DE ACESSO/NF + VALIDAÇÃO DE PESO
   static async conferirPacote(req: Request, res: Response): Promise<void> {
     try {
       const { conferencia_id, codigo_caixa, codigo_pacote, peso_balanca } = req.body;
@@ -193,16 +210,14 @@ export class ConferenciaController {
         return;
       }
 
-      // 1. Busca a caixa de embalagem pelo SKU / Barcode lido
       const caixa = await CaixaEmbalagem.findOne({
-        where: { codigo_sku: String(codigo_caixa).trim() }
+        where: { codigo_sku: String(codigo_caixa).trim().toUpperCase() }
       });
       if (!caixa) {
         res.status(404).json({ erro: `Caixa com SKU/código "${codigo_caixa}" não cadastrada no sistema.` });
         return;
       }
 
-      // 2. Busca o pacote na conferência ativa
       const pacote = await Pacote.findOne({
         where: {
           conferencia_id: Number(conferencia_id),
@@ -217,12 +232,11 @@ export class ConferenciaController {
       if (!pacote) {
         res.status(404).json({
           status: 'fora_remessa',
-          erro: 'Pacote não pertence a esta conferência/remessa.'
+          erro: 'DIVERGÊNCIA: Pacote não pertence a esta conferência/remessa.'
         });
         return;
       }
 
-      // 3. Validação de duplicidade
       if (pacote.status === 'ok' || pacote.status === 'liberado_divergente') {
         res.status(409).json({
           status: 'duplicado',
@@ -237,7 +251,6 @@ export class ConferenciaController {
         return;
       }
 
-      // 4. Bloqueio por 2 erros consecutivos de peso
       if (pacote.status === 'bloqueado') {
         res.status(403).json({
           status: 'bloqueado',
@@ -246,7 +259,6 @@ export class ConferenciaController {
         return;
       }
 
-      // 5. Cálculo do peso esperado estritamente para os itens deste pacote
       const itens = (pacote as any).itens || [];
       if (itens.length === 0) {
         res.status(400).json({ erro: 'Pacote sem itens vinculados na remessa.' });
@@ -273,14 +285,11 @@ export class ConferenciaController {
 
       const pesoTaraCaixa = Number(caixa.peso_gramas);
       const pesoEsperadoTotal = Number((pesoProdutosEsperado + pesoTaraCaixa).toFixed(2));
-
-      // Obtenção do peso vindo da balança (payload ou serviço)
       const pesoLido = peso_balanca !== undefined ? Number(peso_balanca) : BalancaService.obterPesoAtual().peso_gramas;
 
       const margemAceitavel = pesoEsperadoTotal * (maiorTolerancia / 100);
       const pesoMinimo = pesoEsperadoTotal - margemAceitavel;
       const pesoMaximo = pesoEsperadoTotal + margemAceitavel;
-
       const pesoAprovado = pesoLido >= pesoMinimo && pesoLido <= pesoMaximo;
 
       pacote.caixa_id = caixa.id;
@@ -308,9 +317,7 @@ export class ConferenciaController {
         return;
       }
 
-      // Tratamento de Reprovação de Peso
       pacote.tentativas_peso += 1;
-
       if (pacote.tentativas_peso >= 2) {
         pacote.status = 'bloqueado';
         await pacote.save();
@@ -346,7 +353,6 @@ export class ConferenciaController {
     }
   }
 
-  // 3. LIBERAÇÃO DE PACOTE TRAVADO (ADMIN / GERENTE COM SENHA)
   static async liberarDivergente(req: Request, res: Response): Promise<void> {
     try {
       const { pacote_id, email_superior, senha_superior, justificativa } = req.body;
@@ -358,7 +364,7 @@ export class ConferenciaController {
 
       const superior = await Usuario.findOne({ where: { email: email_superior } });
       if (!superior || superior.perfil !== 'admin') {
-        res.status(403).json({ erro: 'Credenciais inválidas ou usuário não possui privilégios de superior.' });
+        res.status(403).json({ erro: 'Credenciais inválidas ou utilizador não possui privilégios de superior.' });
         return;
       }
 
@@ -389,7 +395,6 @@ export class ConferenciaController {
     }
   }
 
-  // 4. LISTAR CONFERÊNCIAS ABERTAS / INTERROMPIDAS
   static async listarConferenciasAbertas(req: Request, res: Response): Promise<void> {
     try {
       const conferencias = await Conferencia.findAll({
@@ -406,7 +411,6 @@ export class ConferenciaController {
     }
   }
 
-  // 5. OBTER DETALHES DE UMA CONFERÊNCIA
   static async obterConferencia(req: Request, res: Response): Promise<void> {
     try {
       const id = Number(req.params.id);
@@ -433,14 +437,12 @@ export class ConferenciaController {
         res.status(404).json({ erro: 'Conferência não encontrada.' });
         return;
       }
-
       res.status(200).json(conferencia);
     } catch (error: any) {
       res.status(500).json({ erro: error.message });
     }
   }
 
-  // 6. INTERROMPER E SALVAR
   static async interromper(req: Request, res: Response): Promise<void> {
     try {
       const id = Number(req.params.id);
@@ -464,7 +466,6 @@ export class ConferenciaController {
     }
   }
 
-  // 7. RETOMAR CONFERÊNCIA
   static async retomar(req: Request, res: Response): Promise<void> {
     try {
       const id = Number(req.params.id);
@@ -488,7 +489,6 @@ export class ConferenciaController {
     }
   }
 
-  // 8. FINALIZAR CONFERÊNCIA
   static async finalizar(req: Request, res: Response): Promise<void> {
     try {
       const id = Number(req.params.id);
@@ -497,8 +497,7 @@ export class ConferenciaController {
         return;
       }
 
-      const usuarioLogado = (req as any).usuario;
-
+      const usuarioLogado = (req as any).usuario || (req as any).user;
       const conferencia = await Conferencia.findByPk(id, {
         include: [{ model: Pacote, as: 'pacotes' }]
       });
@@ -528,7 +527,6 @@ export class ConferenciaController {
     }
   }
 
-  // 9. REMOVER ÚLTIMA REMESSA (EXCLUSIVO ADMIN)
   static async removerUltimaRemessa(req: Request, res: Response): Promise<void> {
     const t = await sequelize.transaction();
     try {
@@ -551,19 +549,17 @@ export class ConferenciaController {
         return;
       }
 
-      // Remove pacotes e itens da remessa
       await Pacote.destroy({ where: { remessa_id: ultimaRemessa.id }, transaction: t });
       await ultimaRemessa.destroy({ transaction: t });
 
       await t.commit();
-      res.status(200).json({ mensagem: `Remessa nº ${ultimaRemessa.numero_remessa} e seus pacotes foram removidos com sucesso.` });
+      res.status(200).json({ mensagem: `Remessa nº ${ultimaRemessa.numero_remessa} e os respetivos pacotes foram removidos com sucesso.` });
     } catch (error: any) {
       await t.rollback();
       res.status(500).json({ erro: error.message });
     }
   }
 
-  // 10. EXCLUIR PACOTES SELECIONADOS (EXCLUSIVO ADMIN)
   static async excluirPacotes(req: Request, res: Response): Promise<void> {
     try {
       const { ids } = req.body;
@@ -579,3 +575,5 @@ export class ConferenciaController {
     }
   }
 }
+
+export default ConferenciaController;
