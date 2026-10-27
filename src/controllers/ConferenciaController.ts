@@ -10,10 +10,8 @@ import CaixaEmbalagem from '../models/CaixaEmbalagem';
 import SkuProduto from '../models/SkuProduto';
 import RegraIcms from '../models/RegraIcms';
 import Usuario from '../models/Usuario';
-import BalancaService from '../services/BalancaService';
 
 export class ConferenciaController {
-  // 1. IMPORTAR REMESSA (JSON) COM VALIDAÇÕES E PROTEÇÃO DE DUPLICIDADE
   static async importarRemessa(req: Request, res: Response): Promise<void> {
     const t = await sequelize.transaction();
     try {
@@ -210,6 +208,11 @@ export class ConferenciaController {
         return;
       }
 
+      if (peso_balanca === undefined || peso_balanca === null) {
+        res.status(400).json({ erro: 'Peso da balança é obrigatório.' });
+        return;
+      }
+
       const caixa = await CaixaEmbalagem.findOne({
         where: { codigo_sku: String(codigo_caixa).trim().toUpperCase() }
       });
@@ -285,7 +288,7 @@ export class ConferenciaController {
 
       const pesoTaraCaixa = Number(caixa.peso_gramas);
       const pesoEsperadoTotal = Number((pesoProdutosEsperado + pesoTaraCaixa).toFixed(2));
-      const pesoLido = peso_balanca !== undefined ? Number(peso_balanca) : BalancaService.obterPesoAtual().peso_gramas;
+      const pesoLido = Number(peso_balanca);
 
       const margemAceitavel = pesoEsperadoTotal * (maiorTolerancia / 100);
       const pesoMinimo = pesoEsperadoTotal - margemAceitavel;

@@ -2,6 +2,7 @@ let conferenciaAtual = null;
 let caixaAtiva = null;
 let filtroAtivo = false;
 let filtroTermo = '';
+let pesoAtualBalanca = 0;
 
 const API_BASE = 'http://localhost:3000/api';
 
@@ -56,19 +57,21 @@ function iniciarMonitoramentoBalanca() {
             if (!display) return; 
 
             if (simulador && simulador.value !== '') {
-                display.textContent = `${Number(simulador.value).toFixed(2)} g`;
+                pesoAtualBalanca = Number(simulador.value);
+                display.textContent = `${pesoAtualBalanca.toFixed(2)} g`;
                 return;
             }
 
-            const res = await fetch(`${API_BASE}/balanca/peso`);
+            const res = await fetch('http://balanca-euroart.local/peso');
             if (res.ok) {
                 const dados = await res.json();
-                display.textContent = `${Number(dados.peso_gramas).toFixed(2)} g`;
+                pesoAtualBalanca = Number(dados.peso_gramas);
+                display.textContent = `${pesoAtualBalanca.toFixed(2)} g`;
             }
         } catch {
-            // Ignora silenciosamente se o backend ou ESP32 falhar (não encrava interface)
+            
         }
-    }, 1500);
+    }, 1000);
 }
 
 async function processarBipagem(codigo) {
@@ -123,9 +126,6 @@ async function processarBipagem(codigo) {
         return;
     }
 
-    const simulador = document.getElementById('simuladorPeso');
-    const pesoManual = simulador && simulador.value !== '' ? Number(simulador.value) : undefined;
-
     try {
         const res = await fetch(`${API_BASE}/conferencias/conferir`, {
             method: 'POST',
@@ -137,7 +137,7 @@ async function processarBipagem(codigo) {
                 conferencia_id: conferenciaAtual.id,
                 codigo_caixa: caixaAtiva.codigo_sku,
                 codigo_pacote: codigo,
-                peso_balanca: pesoManual
+                peso_balanca: pesoAtualBalanca 
             })
         });
 
