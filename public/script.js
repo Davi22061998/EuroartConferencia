@@ -52,15 +52,8 @@ function aplicarPermissoesPerfil() {
 function iniciarMonitoramentoBalanca() {
     setInterval(async () => {
         try {
-            const simulador = document.getElementById('simuladorPeso');
             const display = document.getElementById('displayPesoBalanca');
             if (!display) return; 
-
-            if (simulador && simulador.value !== '') {
-                pesoAtualBalanca = Number(simulador.value);
-                display.textContent = `${pesoAtualBalanca.toFixed(2)} g`;
-                return;
-            }
 
             const res = await fetch('http://balanca-euroart.local/peso');
             if (res.ok) {
@@ -69,7 +62,7 @@ function iniciarMonitoramentoBalanca() {
                 display.textContent = `${pesoAtualBalanca.toFixed(2)} g`;
             }
         } catch {
-            
+            // Ignora silenciosamente se o ESP32 estiver offline
         }
     }, 1000);
 }
