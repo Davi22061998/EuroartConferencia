@@ -3,38 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Geral - Euroart</title>
+    <title>Dashboard - Euroart</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth.js"></script>
+    <style>
+        .kpi-container { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .kpi-card { flex: 1; min-width: 200px; background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .kpi-card h3 { color: #64748b; font-size: 0.9em; text-transform: uppercase; margin-bottom: 10px; }
+        .kpi-card .value { font-size: 2em; font-weight: bold; color: #0f172a; }
+        .kpi-card .value.success { color: #10b981; }
+        .kpi-card .value.danger { color: #ef4444; }
+        .charts-container { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
+        .chart-box { flex: 1; min-width: 400px; background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        
+        /* O SEGREDO PARA O GRÁFICO NÃO CRESCER INFINITAMENTE ESTÁ AQUI: */
+        .canvas-wrapper { position: relative; height: 300px; width: 100%; }
+    </style>
 </head>
 <body>
     <div class="app-layout">
         <main class="main-content">
             <div class="container">
                 <div class="header-with-logo">
-                    <img src="images/euro.png" alt="Logo Euroart" class="logo" onerror="this.style.display='none'">
-                    <h1>Dashboard de Expedição</h1>
+                    <h1><i class="fas fa-chart-line"></i> Dashboard de Expedição</h1>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
-                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 8px;">
-                        <span style="font-size: 0.85rem; color: #1e40af; font-weight: 600; text-transform: uppercase;">Conferência Ativa</span>
-                        <h2 style="color: #1e3a8a; margin-top: 6px;" id="dashConfAtiva">Carregando...</h2>
+                <div class="kpi-container">
+                    <div class="kpi-card">
+                        <h3>Total de Volumes</h3>
+                        <div class="value" id="kpiTotal">0</div>
                     </div>
-                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 20px; border-radius: 8px;">
-                        <span style="font-size: 0.85rem; color: #15803d; font-weight: 600; text-transform: uppercase;">Volumes no Sistema</span>
-                        <h2 style="color: #166534; margin-top: 6px;" id="dashTotalPacotes">-</h2>
+                    <div class="kpi-card">
+                        <h3>Pacotes Aprovados</h3>
+                        <div class="value success" id="kpiOk">0</div>
+                    </div>
+                    <div class="kpi-card">
+                        <h3>Erros / Bloqueios</h3>
+                        <div class="value danger" id="kpiErro">0</div>
+                    </div>
+                    <div class="kpi-card">
+                        <h3>Caixas Utilizadas</h3>
+                        <div class="value" style="color: #3b82f6;" id="kpiCaixas">0</div>
                     </div>
                 </div>
 
-                <div class="controls" style="margin-bottom: 20px;">
-                    <button onclick="window.location.href='conferencia.html'" class="btn-finalizar" style="font-size: 1rem; padding: 12px 24px;">
-                        <i class="fas fa-play"></i> Ir para Conferência em Execução
-                    </button>
+                <div class="charts-container">
+                    <div class="chart-box">
+                        <h3 style="text-align: center; margin-bottom: 15px; color: #475569;">Desempenho por Status</h3>
+                        <!-- DIV DE CONTENÇÃO ADICIONADA -->
+                        <div class="canvas-wrapper">
+                            <canvas id="chartStatus"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <h3 style="text-align: center; margin-bottom: 15px; color: #475569;">Volumes por Transportadora</h3>
+                        <!-- DIV DE CONTENÇÃO ADICIONADA -->
+                        <div class="canvas-wrapper">
+                            <canvas id="chartTransportadoras"></canvas>
+                        </div>
+                    </div>
                 </div>
+
+                <div class="chart-box" style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px; color: #475569;">Top 5 SKUs Mais Expedidos</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #e2e8f0; text-align: left;">
+                                <th style="padding: 10px;">SKU</th>
+                                <th style="padding: 10px;">Descrição</th>
+                                <th style="padding: 10px; text-align: center;">Qtd Vendida</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaTopProdutos">
+                            <tr><td colspan="3" style="text-align: center; padding: 20px;">A carregar dados...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
             </div>
-
+            
             <footer>
                 <div id="versiculo-do-dia"></div>
                 <p>&copy; 2026 - PI Euroart - Fatec Indaiatuba</p>
@@ -48,26 +97,7 @@
         if (typeof carregarMenu === 'function') {
             carregarMenu('menu-dashboard');
         }
-
-        async function carregarDadosDash() {
-            try {
-                const res = await fetch('http://localhost:3000/api/conferencias/ativas', {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                });
-                const conferencias = await res.json();
-                if (Array.isArray(conferencias) && conferencias.length > 0) {
-                    document.getElementById('dashConfAtiva').textContent = conferencias[0].transportadora;
-                    const total = conferencias.reduce((acc, c) => acc + (c.pacotes ? c.pacotes.length : 0), 0);
-                    document.getElementById('dashTotalPacotes').textContent = `${total} pacotes`;
-                } else {
-                    document.getElementById('dashConfAtiva').textContent = "Nenhuma ativa";
-                    document.getElementById('dashTotalPacotes').textContent = "0 pacotes";
-                }
-            } catch {
-                document.getElementById('dashConfAtiva').textContent = "Offline";
-            }
-        }
-        carregarDadosDash();
     </script>
+    <script src="dashboard.js"></script>
 </body>
 </html>

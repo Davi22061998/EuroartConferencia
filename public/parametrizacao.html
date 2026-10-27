@@ -7,285 +7,115 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="auth.js"></script>
-    <script>
-        const user = JSON.parse(localStorage.getItem('usuario') || '{}');
-        if (user.perfil !== 'admin') window.location.href = 'index.html';
-    </script>
 </head>
 <body>
-    <div class="container" style="max-width: 1200px; margin: 20px auto;">
-        <div class="header-with-logo">
-            <img src="images/euro.png" alt="Logo Euroart" class="logo" onerror="this.style.display='none'">
-            <h1><i class="fas fa-boxes"></i> Parametrização do Sistema</h1>
-        </div>
+    <div class="app-layout">
+        <main class="main-content">
+            <div class="container">
+                <div class="header-with-logo">
+                    <h1><i class="fas fa-boxes"></i> Parametrização do Sistema</h1>
+                </div>
 
-        <div class="controls" style="margin-bottom: 20px;">
-            <button onclick="window.location.href='index.html'" class="btn-retomar"><i class="fas fa-arrow-left"></i> Voltar para Conferência</button>
-            <button onclick="window.location.href='historico.html'" class="btn-historico"><i class="fas fa-history"></i> Histórico</button>
-            <button onclick="window.location.href='minutas.html'" class="btn-minutas"><i class="fas fa-file-alt"></i> Minutas</button>
-        </div>
+                <div class="controls" style="margin-bottom: 20px;">
+                    <button onclick="window.location.href='conferencia.html'" class="btn-interromper"><i class="fas fa-arrow-left"></i> Voltar para Conferência</button>
+                    <button onclick="window.location.href='historico.html'" class="btn-historico"><i class="fas fa-history"></i> Histórico</button>
+                    <button onclick="window.location.href='minutas.html'" class="btn-minutas"><i class="fas fa-file-alt"></i> Minutas</button>
+                </div>
 
-        <div id="feedbackMessage" class="feedback-message"></div>
+                <div class="tabs">
+                    <button class="tab-button active" onclick="mostrarAba('caixas')">1. Caixas (Embalagens)</button>
+                    <button class="tab-button" onclick="mostrarAba('produtos')">2. Produtos (SKUs)</button>
+                </div>
 
-        <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px;">
-            <button class="tab-btn active" id="btnAbaCaixas" onclick="alternarAba('aba-caixas')"><i class="fas fa-box"></i> 1. Caixas (Embalagens)</button>
-            <button class="tab-btn" id="btnAbaSkus" onclick="alternarAba('aba-skus')"><i class="fas fa-barcode"></i> 2. Produtos (SKUs)</button>
-        </div>
+                <!-- ABA DE CAIXAS -->
+                <div id="aba-caixas" class="tab-content" style="display: block;">
+                    <h2>Cadastro de Caixas de Embalagem</h2>
+                    <p style="color: #64748b; margin-bottom: 20px;">Cadastre o SKU/Barcode impresso na embalagem e seu peso tara.</p>
+                    
+                    <form id="formCaixa" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <input type="hidden" id="caixaId">
+                        <input type="text" id="caixaSku" placeholder="SKU / Barcode da Caixa" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <input type="text" id="caixaNome" placeholder="Nome (Ex: Caixa Padrão P)" required style="flex: 1.5; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <input type="number" id="caixaPeso" placeholder="Peso Tara (g)" step="0.01" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <input type="text" id="caixaDescricao" placeholder="Descrição (opcional)" style="flex: 1.5; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <button type="submit" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;"><i class="fas fa-save"></i> Salvar Caixa</button>
+                    </form>
 
-        <!-- ABA 1: CAIXAS -->
-        <div id="aba-caixas">
-            <h2>Cadastro de Caixas de Embalagem</h2>
-            <p style="color: #64748b; font-size: 0.9em; margin-bottom: 15px;">Cadastre o SKU/Barcode impresso na embalagem e seu peso tara.</p>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>SKU / BARCODE</th>
+                                    <th>NOME</th>
+                                    <th>PESO TARA (G)</th>
+                                    <th>DESCRIÇÃO</th>
+                                    <th style="text-align: center;">AÇÕES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaCaixas">
+                                <tr><td colspan="6" class="text-center py-4 text-muted">A carregar caixas...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ABA DE PRODUTOS -->
+                <div id="aba-produtos" class="tab-content" style="display: none;">
+                    <h2>Cadastro de Produtos (SKUs)</h2>
+                    <p style="color: #64748b; margin-bottom: 20px;">Cadastre o peso unitário de cada SKU e a tolerância de variação permitida.</p>
+                    
+                    <form id="formProduto" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <input type="hidden" id="produtoId">
+                        <input type="text" id="produtoSku" placeholder="Código SKU" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <input type="text" id="produtoNome" placeholder="Nome / Descrição" required style="flex: 2; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <input type="number" id="produtoPeso" placeholder="Peso Unit. (g)" step="0.01" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <input type="number" id="produtoTolerancia" placeholder="Tolerância (%)" step="0.1" value="2.0" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <button type="submit" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;"><i class="fas fa-save"></i> Salvar Produto</button>
+                    </form>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>CÓDIGO SKU</th>
+                                    <th>NOME / DESCRIÇÃO</th>
+                                    <th>PESO UNIT. (G)</th>
+                                    <th>TOLERÂNCIA (%)</th>
+                                    <th style="text-align: center;">AÇÕES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaProdutos">
+                                <tr><td colspan="6" class="text-center py-4 text-muted">A carregar produtos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
             
-            <form id="form-caixa" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center;">
-                <input type="hidden" id="caixaId">
-                <input type="text" id="codigoSkuCaixa" placeholder="SKU / Barcode da Caixa" required style="flex: 1; min-width: 180px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                <input type="text" id="nomeCaixa" placeholder="Nome (Ex: Caixa Padrão P)" required style="flex: 2; min-width: 200px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                <input type="number" step="0.01" id="pesoCaixa" placeholder="Peso Tara (g)" required style="flex: 1; min-width: 140px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                <input type="text" id="descCaixa" placeholder="Descrição (opcional)" style="flex: 2; min-width: 180px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                <button type="submit" id="btnSalvarCaixa" class="btn-finalizar" style="padding: 10px 18px;"><i class="fas fa-save"></i> Salvar Caixa</button>
-                <button type="button" id="btnCancelarCaixa" class="btn-pendentes" style="display: none; padding: 10px 18px;" onclick="limparFormCaixa()">Cancelar</button>
-            </form>
-
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>SKU / Barcode</th>
-                            <th>Nome</th>
-                            <th>Peso Tara (g)</th>
-                            <th>Descrição</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabelaCaixas">
-                        <tr><td colspan="6" style="text-align: center;">Carregando caixas...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- ABA 2: SKUs -->
-        <div id="aba-skus" style="display: none;">
-            <h2>Cadastro de Produtos (SKUs)</h2>
-            <p style="color: #64748b; font-size: 0.9em; margin-bottom: 15px;">Cadastre o peso unitário dos produtos expedidos e a tolerância de pesagem.</p>
-
-            <form id="form-sku" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center;">
-                <input type="hidden" id="skuId">
-                <input type="text" id="codigoSku" placeholder="Código SKU do Produto" required style="flex: 1; min-width: 180px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                <input type="text" id="nomeProduto" placeholder="Nome do Produto" required style="flex: 2; min-width: 220px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                <input type="number" step="0.01" id="pesoUnitario" placeholder="Peso Unitário (g)" required style="flex: 1; min-width: 140px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                <input type="number" step="0.1" id="tolerancia" placeholder="Tolerância (%)" value="2.0" required style="flex: 1; min-width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
-                <button type="submit" id="btnSalvarSku" class="btn-finalizar" style="padding: 10px 18px;"><i class="fas fa-save"></i> Salvar Produto</button>
-                <button type="button" id="btnCancelarSku" class="btn-pendentes" style="display: none; padding: 10px 18px;" onclick="limparFormSku()">Cancelar</button>
-            </form>
-
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Código SKU</th>
-                            <th>Produto</th>
-                            <th>Peso Unitário (g)</th>
-                            <th>Tolerância (%)</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabelaSkus">
-                        <tr><td colspan="6" style="text-align: center;">Carregando produtos...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+            <footer>
+                <div id="versiculo-do-dia"></div>
+                <p>&copy; 2026 - PI Euroart - Fatec Indaiatuba</p>
+            </footer>
+        </main>
     </div>
 
     <script src="utils.js"></script>
+    <script src="menu.js"></script>
     <script>
-        const API_BASE = 'http://localhost:3000/api';
-        const tokenAtual = localStorage.getItem('token') || (typeof token !== 'undefined' ? token : '');
-
-        function alternarAba(abaId) {
-            document.getElementById('aba-caixas').style.display = abaId === 'aba-caixas' ? 'block' : 'none';
-            document.getElementById('aba-skus').style.display = abaId === 'aba-skus' ? 'block' : 'none';
-            document.getElementById('btnAbaCaixas').classList.toggle('active', abaId === 'aba-caixas');
-            document.getElementById('btnAbaSkus').classList.toggle('active', abaId === 'aba-skus');
+        if (typeof carregarMenu === 'function') {
+            carregarMenu('menu-parametrizacao');
         }
 
-        async function carregarCaixas() {
-            try {
-                const res = await fetch(`${API_BASE}/parametrizacao/caixas`, {
-                    headers: { 'Authorization': `Bearer ${tokenAtual}` }
-                });
-                const caixas = await res.json();
-                const tbody = document.getElementById('tabelaCaixas');
-                tbody.innerHTML = '';
-
-                if (!Array.isArray(caixas) || caixas.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhuma caixa cadastrada.</td></tr>';
-                    return;
-                }
-
-                caixas.forEach(c => {
-                    tbody.innerHTML += `<tr>
-                        <td>#${c.id}</td>
-                        <td><strong>${c.codigo_sku}</strong></td>
-                        <td>${c.nome}</td>
-                        <td>${Number(c.peso_gramas).toFixed(2)} g</td>
-                        <td>${c.descricao || '-'}</td>
-                        <td>
-                            <button class="btn-retomar" onclick='editarCaixa(${JSON.stringify(c)})' style="padding: 4px 8px; font-size: 0.85em;"><i class="fas fa-edit"></i></button>
-                            <button class="btn-excluir" onclick="excluirItem('caixas', ${c.id})" style="padding: 4px 8px; font-size: 0.85em;"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>`;
-                });
-            } catch {
-                mostrarMensagem("Erro ao carregar lista de caixas.", "error");
-            }
+        function mostrarAba(abaId) {
+            document.querySelectorAll('.tab-content').forEach(aba => aba.style.display = 'none');
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`aba-${abaId}`).style.display = 'block';
+            event.currentTarget.classList.add('active');
         }
-
-        async function carregarSkus() {
-            try {
-                const res = await fetch(`${API_BASE}/parametrizacao/skus`, {
-                    headers: { 'Authorization': `Bearer ${tokenAtual}` }
-                });
-                const skus = await res.json();
-                const tbody = document.getElementById('tabelaSkus');
-                tbody.innerHTML = '';
-
-                if (!Array.isArray(skus) || skus.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhum SKU de produto cadastrado.</td></tr>';
-                    return;
-                }
-
-                skus.forEach(s => {
-                    tbody.innerHTML += `<tr>
-                        <td>#${s.id}</td>
-                        <td><strong>${s.codigo_sku}</strong></td>
-                        <td>${s.nome_produto}</td>
-                        <td>${Number(s.peso_unitario_gramas).toFixed(2)} g</td>
-                        <td>${Number(s.tolerancia_peso_porcento).toFixed(1)}%</td>
-                        <td>
-                            <button class="btn-retomar" onclick='editarSku(${JSON.stringify(s)})' style="padding: 4px 8px; font-size: 0.85em;"><i class="fas fa-edit"></i></button>
-                            <button class="btn-excluir" onclick="excluirItem('skus', ${s.id})" style="padding: 4px 8px; font-size: 0.85em;"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>`;
-                });
-            } catch {
-                mostrarMensagem("Erro ao carregar produtos.", "error");
-            }
-        }
-
-        function editarCaixa(c) {
-            document.getElementById('caixaId').value = c.id;
-            document.getElementById('codigoSkuCaixa').value = c.codigo_sku;
-            document.getElementById('nomeCaixa').value = c.nome;
-            document.getElementById('pesoCaixa').value = c.peso_gramas;
-            document.getElementById('descCaixa').value = c.descricao || '';
-            document.getElementById('btnSalvarCaixa').innerHTML = '<i class="fas fa-sync"></i> Atualizar';
-            document.getElementById('btnCancelarCaixa').style.display = 'inline-block';
-        }
-
-        function limparFormCaixa() {
-            document.getElementById('form-caixa').reset();
-            document.getElementById('caixaId').value = '';
-            document.getElementById('btnSalvarCaixa').innerHTML = '<i class="fas fa-save"></i> Salvar Caixa';
-            document.getElementById('btnCancelarCaixa').style.display = 'none';
-        }
-
-        function editarSku(s) {
-            document.getElementById('skuId').value = s.id;
-            document.getElementById('codigoSku').value = s.codigo_sku;
-            document.getElementById('nomeProduto').value = s.nome_produto;
-            document.getElementById('pesoUnitario').value = s.peso_unitario_gramas;
-            document.getElementById('tolerancia').value = s.tolerancia_peso_porcento;
-            document.getElementById('btnSalvarSku').innerHTML = '<i class="fas fa-sync"></i> Atualizar';
-            document.getElementById('btnCancelarSku').style.display = 'inline-block';
-        }
-
-        function limparFormSku() {
-            document.getElementById('form-sku').reset();
-            document.getElementById('skuId').value = '';
-            document.getElementById('btnSalvarSku').innerHTML = '<i class="fas fa-save"></i> Salvar Produto';
-            document.getElementById('btnCancelarSku').style.display = 'none';
-        }
-
-        document.getElementById('form-caixa').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const idVal = document.getElementById('caixaId').value;
-            const payload = {
-                id: idVal ? Number(idVal) : null,
-                codigo_sku: document.getElementById('codigoSkuCaixa').value,
-                nome: document.getElementById('nomeCaixa').value,
-                peso_gramas: document.getElementById('pesoCaixa').value,
-                descricao: document.getElementById('descCaixa').value
-            };
-
-            await enviarDados(`${API_BASE}/parametrizacao/caixas`, payload, limparFormCaixa, carregarCaixas);
-        });
-
-        document.getElementById('form-sku').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const idVal = document.getElementById('skuId').value;
-            const payload = {
-                id: idVal ? Number(idVal) : null,
-                codigo_sku: document.getElementById('codigoSku').value,
-                nome_produto: document.getElementById('nomeProduto').value,
-                peso_unitario_gramas: document.getElementById('pesoUnitario').value,
-                tolerancia_peso_porcento: document.getElementById('tolerancia').value
-            };
-
-            await enviarDados(`${API_BASE}/parametrizacao/skus`, payload, limparFormSku, carregarSkus);
-        });
-
-        async function enviarDados(url, payload, callbackLimpar, callbackRecarregar) {
-            try {
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${tokenAtual}`
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const resposta = await res.json();
-                if (!res.ok) {
-                    mostrarMensagem(resposta.erro || "Falha na operação.", "error");
-                    return;
-                }
-
-                mostrarMensagem(resposta.mensagem || "Salvo com sucesso!", "success");
-                callbackLimpar();
-                callbackRecarregar();
-            } catch {
-                mostrarMensagem("Erro de comunicação com o servidor.", "error");
-            }
-        }
-
-        async function excluirItem(endpoint, id) {
-            if (!confirm("Tem certeza que deseja excluir este registro?")) return;
-            try {
-                const res = await fetch(`${API_BASE}/parametrizacao/${endpoint}/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${tokenAtual}` }
-                });
-                const resposta = await res.json();
-                if (!res.ok) {
-                    mostrarMensagem(resposta.erro || "Erro ao excluir.", "error");
-                    return;
-                }
-                mostrarMensagem(resposta.mensagem || "Excluído com sucesso!", "success");
-                if (endpoint === 'caixas') carregarCaixas();
-                else carregarSkus();
-            } catch {
-                mostrarMensagem("Erro ao excluir registro.", "error");
-            }
-        }
-
-        carregarCaixas();
-        carregarSkus();
     </script>
+    <script src="parametrizacao.js"></script>
 </body>
 </html>

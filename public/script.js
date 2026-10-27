@@ -323,7 +323,7 @@ async function carregarDetalhesConferencia(id) {
         const tituloT = document.getElementById('transportadoraAtual');
         if (tituloT) tituloT.textContent = `Transportadora: ${conferenciaAtual.transportadora}`;
         
-        ['btnInterromper', 'btnFinalizar', 'btnResetRemessa', 'btnExcluirPacotes'].forEach(btnId => {
+        ['btnInterromper', 'btnFinalizar', 'btnResetRemessa', 'btnExcluirPacotes', 'btnExcluirConferencia'].forEach(btnId => {
             const btn = document.getElementById(btnId);
             if (btn) btn.disabled = false;
         });
@@ -579,111 +579,152 @@ function aplicarEfeitoVisual(tipo) {
     }, 750);
 }
 
-async function interromperConferencia() {
+// ==========================================
+// FUNÇÕES DE AÇÃO COM O NOVO MODAL
+// ==========================================
+function interromperConferencia() {
     if (!conferenciaAtual) return;
-    if (!confirm(`Deseja interromper a conferência da ${conferenciaAtual.transportadora}?`)) return;
+    mostrarConfirmacao(`Deseja interromper a conferência da ${conferenciaAtual.transportadora}?`, async () => {
+        await fetch(`${API_BASE}/conferencias/${conferenciaAtual.id}/interromper`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${obterTokenAtual()}` }
+        });
 
-    await fetch(`${API_BASE}/conferencias/${conferenciaAtual.id}/interromper`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${obterTokenAtual()}` }
+        mostrarMensagem("Conferência interrompida e salva.", "info");
+
+        conferenciaAtual = null;
+        cancelarCaixaAtiva();
+
+        const titulo = document.getElementById('transportadoraAtual');
+        if(titulo) titulo.textContent = "Transportadora: Nenhuma Selecionada";
+        
+        ['btnInterromper', 'btnFinalizar', 'btnResetRemessa', 'btnExcluirPacotes', 'btnExcluirConferencia'].forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn) btn.disabled = true;
+        });
+
+        const tbody = document.getElementById('listaPacotes');
+        if(tbody) tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">Nenhuma conferência em andamento no momento. Selecione uma transportadora e clique em "Retomar" ou importe um JSON.</td></tr>';
+
+        atualizarContadores();
+        carregarConferenciasAtivas();
     });
-
-    mostrarMensagem("Conferência interrompida e salva.", "info");
-
-    conferenciaAtual = null;
-    cancelarCaixaAtiva();
-
-    const titulo = document.getElementById('transportadoraAtual');
-    if(titulo) titulo.textContent = "Transportadora: Nenhuma Selecionada";
-    
-    ['btnInterromper', 'btnFinalizar', 'btnResetRemessa', 'btnExcluirPacotes'].forEach(btnId => {
-        const btn = document.getElementById(btnId);
-        if (btn) btn.disabled = true;
-    });
-
-    const tbody = document.getElementById('listaPacotes');
-    if(tbody) tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">Nenhuma conferência em andamento no momento. Selecione uma transportadora e clique em "Retomar" ou importe um JSON.</td></tr>';
-
-    atualizarContadores();
-    carregarConferenciasAtivas();
 }
 
-async function finalizarConferencia() {
+function finalizarConferencia() {
     if (!conferenciaAtual) return;
-    if (!confirm("Deseja realmente finalizar esta conferência?")) return;
+    mostrarConfirmacao("Deseja realmente finalizar esta conferência?", async () => {
+        const res = await fetch(`${API_BASE}/conferencias/${conferenciaAtual.id}/finalizar`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${obterTokenAtual()}` }
+        });
 
-    const res = await fetch(`${API_BASE}/conferencias/${conferenciaAtual.id}/finalizar`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${obterTokenAtual()}` }
+        const resposta = await res.json();
+        if (!res.ok) {
+            mostrarMensagem(resposta.erro, "error");
+            return;
+        }
+
+        mostrarMensagem("Conferência finalizada com sucesso!", "success");
+        conferenciaAtual = null;
+        cancelarCaixaAtiva();
+
+        const titulo = document.getElementById('transportadoraAtual');
+        if(titulo) titulo.textContent = "Transportadora: Nenhuma Selecionada";
+        
+        ['btnInterromper', 'btnFinalizar', 'btnResetRemessa', 'btnExcluirPacotes', 'btnExcluirConferencia'].forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn) btn.disabled = true;
+        });
+
+        const tbody = document.getElementById('listaPacotes');
+        if(tbody) tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">Nenhuma conferência selecionada.</td></tr>';
+
+        atualizarContadores();
+        carregarConferenciasAtivas();
     });
-
-    const resposta = await res.json();
-    if (!res.ok) {
-        mostrarMensagem(resposta.erro, "error");
-        return;
-    }
-
-    mostrarMensagem("Conferência finalizada com sucesso!", "success");
-    conferenciaAtual = null;
-    cancelarCaixaAtiva();
-
-    const titulo = document.getElementById('transportadoraAtual');
-    if(titulo) titulo.textContent = "Transportadora: Nenhuma Selecionada";
-    
-    ['btnInterromper', 'btnFinalizar', 'btnResetRemessa', 'btnExcluirPacotes'].forEach(btnId => {
-        const btn = document.getElementById(btnId);
-        if (btn) btn.disabled = true;
-    });
-
-    const tbody = document.getElementById('listaPacotes');
-    if(tbody) tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">Nenhuma conferência selecionada.</td></tr>';
-
-    atualizarContadores();
-    carregarConferenciasAtivas();
 }
 
-async function removerUltimaRemessa() {
+function removerUltimaRemessa() {
     if (!conferenciaAtual) return;
-    if (!confirm("Tem certeza que deseja remover a última remessa desta conferência?")) return;
+    mostrarConfirmacao("Tem certeza que deseja remover a última remessa desta conferência?", async () => {
+        const res = await fetch(`${API_BASE}/conferencias/${conferenciaAtual.id}/remover-ultima-remessa`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${obterTokenAtual()}` }
+        });
 
-    const res = await fetch(`${API_BASE}/conferencias/${conferenciaAtual.id}/remover-ultima-remessa`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${obterTokenAtual()}` }
+        const resposta = await res.json();
+        if (!res.ok) {
+            mostrarMensagem(resposta.erro, "error");
+            return;
+        }
+
+        mostrarMensagem(resposta.mensagem, "info");
+        await recarregarConferenciaAtual();
     });
-
-    const resposta = await res.json();
-    if (!res.ok) {
-        mostrarMensagem(resposta.erro, "error");
-        return;
-    }
-
-    mostrarMensagem(resposta.mensagem, "info");
-    await recarregarConferenciaAtual();
 }
 
-async function excluirPacotesSelecionados() {
+function excluirPacotesSelecionados() {
     const marcados = Array.from(document.querySelectorAll('.chk-pacote:checked')).map(cb => Number(cb.value));
     if (!marcados.length) {
         mostrarMensagem("Selecione ao menos um pacote na tabela para excluir.", "warning");
         return;
     }
 
-    if (!confirm(`Excluir permanentemente ${marcados.length} pacote(s)?`)) return;
+    mostrarConfirmacao(`Excluir permanentemente ${marcados.length} pacote(s)?`, async () => {
+        const res = await fetch(`${API_BASE}/conferencias/pacotes`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${obterTokenAtual()}` },
+            body: JSON.stringify({ ids: marcados })
+        });
 
-    const res = await fetch(`${API_BASE}/conferencias/pacotes`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${obterTokenAtual()}` },
-        body: JSON.stringify({ ids: marcados })
+        const resposta = await res.json();
+        if (!res.ok) {
+            mostrarMensagem(resposta.erro, "error");
+            return;
+        }
+
+        mostrarMensagem(resposta.mensagem, "success");
+        await recarregarConferenciaAtual();
     });
+}
 
-    const resposta = await res.json();
-    if (!res.ok) {
-        mostrarMensagem(resposta.erro, "error");
-        return;
-    }
+function excluirConferenciaAtual() {
+    if (!conferenciaAtual) return;
+    mostrarConfirmacao(`ATENÇÃO: Deseja EXCLUIR DEFINITIVAMENTE a conferência da ${conferenciaAtual.transportadora}? Todos os pacotes e remessas serão apagados.`, async () => {
+        try {
+            const res = await fetch(`${API_BASE}/conferencias/${conferenciaAtual.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${obterTokenAtual()}` }
+            });
 
-    mostrarMensagem(resposta.mensagem, "success");
-    await recarregarConferenciaAtual();
+            const resposta = await res.json();
+            if (!res.ok) {
+                mostrarMensagem(resposta.erro || "Erro ao excluir conferência.", "error");
+                return;
+            }
+
+            mostrarMensagem("Conferência apagada com sucesso!", "success");
+            conferenciaAtual = null;
+            cancelarCaixaAtiva();
+
+            const titulo = document.getElementById('transportadoraAtual');
+            if(titulo) titulo.textContent = "Transportadora: Nenhuma Selecionada";
+            
+            ['btnInterromper', 'btnFinalizar', 'btnResetRemessa', 'btnExcluirPacotes', 'btnExcluirConferencia'].forEach(btnId => {
+                const btn = document.getElementById(btnId);
+                if (btn) btn.disabled = true;
+            });
+
+            const tbody = document.getElementById('listaPacotes');
+            if(tbody) tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">Nenhuma conferência selecionada.</td></tr>';
+
+            atualizarContadores();
+            carregarConferenciasAtivas();
+        } catch {
+            mostrarMensagem("Erro ao conectar à API.", "error");
+        }
+    });
 }
 
 window.retomarConferencia = retomarConferencia;
@@ -691,6 +732,7 @@ window.interromperConferencia = interromperConferencia;
 window.finalizarConferencia = finalizarConferencia;
 window.removerUltimaRemessa = removerUltimaRemessa;
 window.excluirPacotesSelecionados = excluirPacotesSelecionados;
+window.excluirConferenciaAtual = excluirConferenciaAtual;
 window.filtrarPendentes = filtrarPendentes;
 window.cancelarCaixaAtiva = cancelarCaixaAtiva;
 window.fecharModalDivergencia = fecharModalDivergencia;

@@ -13,7 +13,6 @@
         <main class="main-content">
             <div class="container">
                 <div class="header-with-logo">
-                    <img src="images/euro.png" alt="Logo Euroart" class="logo" onerror="this.style.display='none'">
                     <h1>Histórico e Minutas de Transporte</h1>
                 </div>
 
@@ -42,7 +41,7 @@
             </div>
             <footer>
                 <div id="versiculo-do-dia"></div>
-                <p>&copy; 2025 Davi Françozo & Felipe Campelo, todos os direitos reservados.</p>
+                <p>&copy; 2026 - PI Euroart - Fatec Indaiatuba</p>
             </footer>
         </main>
     </div>
@@ -98,9 +97,6 @@
 
         function abrirMinuta(id) {
             const token = localStorage.getItem('token');
-            // Abre o PDF numa nova aba. Como o PDF é gerado e protegido por Token, passamos via query provisória
-            // ou fazemos um fetch com Blob. O Fetch com Blob é mais seguro:
-            
             fetch(`http://localhost:3000/api/conferencias/${id}/minuta`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })

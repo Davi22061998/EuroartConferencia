@@ -14,7 +14,6 @@
         <main class="main-content">
             <div class="container">
                 <div class="header-with-logo">
-                    <img src="images/euro.png" alt="Logo Euroart" class="logo" onerror="this.style.display='none'">
                     <h1>Conferência em Execução</h1>
                 </div>
 
@@ -67,6 +66,7 @@
                     <button onclick="finalizarConferencia()" class="btn-finalizar" id="btnFinalizar" disabled><i class="fas fa-check-circle"></i> Finalizar</button>
                     <button onclick="removerUltimaRemessa()" class="btn-reset admin-only" id="btnResetRemessa" disabled><i class="fas fa-undo"></i> Remover Última Remessa</button>
                     <button onclick="excluirPacotesSelecionados()" class="btn-excluir admin-only" id="btnExcluirPacotes" disabled><i class="fas fa-trash"></i> Excluir Selecionados</button>
+                    <button onclick="excluirConferenciaAtual()" class="btn-excluir admin-only" id="btnExcluirConferencia" disabled style="background: #991b1b;"><i class="fas fa-ban"></i> Excluir Conferência</button>
                     <button onclick="window.location.href='historico.html'" class="btn-historico"><i class="fas fa-history"></i> Ver Histórico</button>
                     <button onclick="window.location.href='minutas.html'" class="btn-minutas"><i class="fas fa-file-alt"></i> Ver Minutas</button>
                     <button onclick="window.location.href='parametrizacao.html'" class="btn-retomar admin-only"><i class="fas fa-boxes"></i> Parametrização</button>

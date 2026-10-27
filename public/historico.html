@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico - Euroart</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="auth.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <main class="main-content">
+            <div class="container">
+                <div class="header-with-logo">
+                    <h1><i class="fas fa-history"></i> Histórico Global de Expedição</h1>
+                </div>
+
+                <p style="color: #64748b; margin-bottom: 20px;">
+                    Registo completo de todos os pacotes processados no sistema (últimos 200). Utilize a pesquisa do navegador (Ctrl+F) para localizar NFs ou Chaves.
+                </p>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data / Hora</th>
+                                <th>NF</th>
+                                <th>Cliente</th>
+                                <th>Transportadora</th>
+                                <th>Status</th>
+                                <th>Peso Real</th>
+                                <th>Justificativa (Se houver)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaHistoricoGeral">
+                            <tr><td colspan="7" class="text-center py-4 text-muted">A carregar histórico...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <footer>
+                <div id="versiculo-do-dia"></div>
+                <p>&copy; 2026 - PI Euroart - Fatec Indaiatuba</p>
+            </footer>
+        </main>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="menu.js"></script>
+    <script>
+        if (typeof carregarMenu === 'function') {
+            carregarMenu('menu-historico');
+        }
+    </script>
+    <script src="historico.js"></script>
+</body>
+</html>

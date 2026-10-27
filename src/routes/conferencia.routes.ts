@@ -4,7 +4,7 @@ import { verificarToken, apenasAdmin } from '../middlewares/auth';
 
 const router = Router();
 
-// Todas as rotas de conferência exigem usuário autenticado
+// Todas as rotas de conferência exigem utilizador autenticado
 router.use(verificarToken);
 
 router.post('/importar', ConferenciaController.importarRemessa);
@@ -13,8 +13,10 @@ router.post('/liberar-divergente', ConferenciaController.liberarDivergente);
 
 router.get('/ativas', ConferenciaController.listarConferenciasAbertas);
 
-// A rota /finalizadas deve obrigatoriamente vir ANTES de /:id
+// Rotas específicas devem vir antes do parâmetro /:id
 router.get('/finalizadas', ConferenciaController.listarConferenciasFinalizadas);
+router.get('/dashboard', ConferenciaController.obterDashboard);
+router.get('/historico-geral', ConferenciaController.listarHistoricoGeral);
 
 router.get('/:id', ConferenciaController.obterConferencia);
 router.get('/:id/minuta', ConferenciaController.gerarMinuta);
@@ -25,5 +27,6 @@ router.post('/:id/finalizar', ConferenciaController.finalizar);
 // Ações exclusivas para Administradores
 router.post('/:id/remover-ultima-remessa', apenasAdmin, ConferenciaController.removerUltimaRemessa);
 router.delete('/pacotes', apenasAdmin, ConferenciaController.excluirPacotes);
+router.delete('/:id', apenasAdmin, ConferenciaController.excluirConferencia);
 
 export default router;

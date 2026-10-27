@@ -595,6 +595,41 @@ export class ConferenciaController {
     }
   }
 
+  static async excluirConferencia(req: Request, res: Response): Promise<void> {
+    const t = await sequelize.transaction();
+    try {
+      const id = Number(req.params.id);
+      if (!id || isNaN(id)) {
+        await t.rollback();
+        res.status(400).json({ erro: 'ID de conferência inválido.' });
+        return;
+      }
+
+      const conferencia = await Conferencia.findByPk(id, { transaction: t });
+      if (!conferencia) {
+        await t.rollback();
+        res.status(404).json({ erro: 'Conferência não encontrada.' });
+        return;
+      }
+
+      const pacotes = await Pacote.findAll({ where: { conferencia_id: id }, transaction: t });
+      const pacoteIds = pacotes.map(p => p.id);
+      
+      if (pacoteIds.length > 0) {
+        await ItemPacote.destroy({ where: { pacote_id: { [Op.in]: pacoteIds } }, transaction: t });
+        await Pacote.destroy({ where: { conferencia_id: id }, transaction: t });
+      }
+      await Remessa.destroy({ where: { conferencia_id: id }, transaction: t });
+      await conferencia.destroy({ transaction: t });
+
+      await t.commit();
+      res.status(200).json({ mensagem: 'Conferência excluída com sucesso!' });
+    } catch (error: any) {
+      await t.rollback();
+      res.status(500).json({ erro: error.message });
+    }
+  }
+
   static async gerarMinuta(req: Request, res: Response): Promise<void> {
     try {
       const id = Number(req.params.id);
@@ -631,7 +666,6 @@ export class ConferenciaController {
       res.setHeader('Content-Disposition', `inline; filename="Minuta_${conferencia.transportadora}_${id}.pdf"`);
       doc.pipe(res);
 
-      // Cabeçalho
       doc.fontSize(16).font('Helvetica-Bold').text('EUROART - MINUTA DE TRANSPORTE', { align: 'center' });
       doc.moveDown(1);
       
@@ -644,7 +678,6 @@ export class ConferenciaController {
 
       let y = doc.y;
       
-      // Cabeçalho da Tabela
       doc.font('Helvetica-Bold').fontSize(9);
       doc.text('NF', 40, y);
       doc.text('CLIENTE', 95, y);
@@ -659,42 +692,33 @@ export class ConferenciaController {
       doc.font('Helvetica').fontSize(9);
       for (const p of pacotes) {
         const itensLista = p.itens || [];
-        
-        // Calcula a altura dinâmica da linha com base na quantidade de SKUs
-        // Cada SKU ocupa 12px de altura. Adicionamos 8px de respiro (padding) no final.
         const alturaLinha = Math.max(1, itensLista.length) * 12 + 8;
 
-        // Se a linha for ultrapassar o limite da página, cria uma nova
         if (y + alturaLinha > 750) { doc.addPage(); y = 40; }
 
         const dataConf = p.data_conferido ? new Date(p.data_conferido).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
         const statusTexto = p.status === 'ok' ? 'OK' : 'LIB. DIVERG.';
         const clienteResumo = p.razao_social.length > 20 ? p.razao_social.substring(0, 18) + '...' : p.razao_social;
 
-        // Imprime os dados principais na linha inicial
         doc.text(p.numero_nf, 40, y);
         doc.text(clienteResumo, 95, y);
         doc.text(statusTexto, 330, y);
         doc.text(p.peso_lido_g.toString(), 410, y);
         doc.text(dataConf, 470, y);
         
-        // Laço para imprimir os SKUs um embaixo do outro na coluna central
         let currentY = y;
         if (itensLista.length === 0) {
           doc.text('-', 210, currentY);
         } else {
           for (const item of itensLista) {
-            // Exemplo de saída: 12120ID (2x)
             doc.text(`${item.codigo_sku} (${item.quantidade}x)`, 210, currentY);
-            currentY += 12; // Desce 12 pixels para a linha do próximo produto
+            currentY += 12;
           }
         }
         
-        // Atualiza a posição Y para a próxima nota fiscal
         y += alturaLinha;
       }
 
-      // Rodapé com Totais
       doc.moveDown(2);
       y = doc.y;
       if (y > 650) { doc.addPage(); y = 40; }
@@ -705,7 +729,6 @@ export class ConferenciaController {
       doc.text(`Volumes Totais: ${totalVolumes} caixas`, 40, y + 15);
       doc.text(`Peso Total da Carga: ${totalPesoKg} Kg`, 40, y + 30);
 
-      // Assinaturas
       doc.moveTo(80, y + 100).lineTo(250, y + 100).stroke();
       doc.text('Assinatura do Motorista', 105, y + 105);
 
@@ -714,6 +737,82 @@ export class ConferenciaController {
 
       doc.end();
     } catch (error: any) {
+      res.status(500).json({ erro: error.message });
+    }
+  }
+
+  // ==========================================================
+  // DASHBOARD E HISTÓRICO GERAL (CORRIGIDO)
+  // ==========================================================
+  static async obterDashboard(req: Request, res: Response): Promise<void> {
+    try {
+      const totalPacotes = await Pacote.count();
+      const pacotesOk = await Pacote.count({ where: { status: { [Op.in]: ['ok', 'liberado_divergente'] } } });
+      const pacotesErro = await Pacote.count({ where: { status: { [Op.in]: ['divergente_peso', 'bloqueado'] } } });
+      const totalCaixas = await Pacote.count({ where: { caixa_id: { [Op.not]: null } } });
+
+      const statusCount = await Pacote.findAll({
+        attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'total']],
+        group: ['status']
+      });
+
+      // Cruzamento manual para evitar erros de alias (as: 'conferencia')
+      const todosPacotes = await Pacote.findAll({ attributes: ['id', 'conferencia_id'] });
+      const todasConferencias = await Conferencia.findAll({ attributes: ['id', 'transportadora'] });
+      
+      const mapaConferencias = new Map(todasConferencias.map((c: any) => [c.id, c.transportadora]));
+      const contagemTransp = new Map();
+
+      todosPacotes.forEach((p: any) => {
+        const transp = mapaConferencias.get(p.conferencia_id) || 'Desconhecida';
+        contagemTransp.set(transp, (contagemTransp.get(transp) || 0) + 1);
+      });
+
+      const transportadorasCount = Array.from(contagemTransp, ([transportadora, total]) => ({ transportadora, total }));
+
+      const topProdutos = await ItemPacote.findAll({
+        attributes: ['codigo_sku', 'descricao_produto', [sequelize.fn('SUM', sequelize.col('quantidade')), 'total_vendido']],
+        group: ['codigo_sku', 'descricao_produto'],
+        order: [[sequelize.literal('total_vendido'), 'DESC']],
+        limit: 5
+      });
+
+      res.status(200).json({
+        kpis: { totalPacotes, pacotesOk, pacotesErro, totalCaixas },
+        graficoStatus: statusCount,
+        graficoTransportadoras: transportadorasCount,
+        topProdutos
+      });
+    } catch (error: any) {
+      console.error("Erro no Dashboard:", error);
+      res.status(500).json({ erro: error.message });
+    }
+  }
+
+  static async listarHistoricoGeral(req: Request, res: Response): Promise<void> {
+    try {
+      // Ordenação pelo ID evita falhas caso a coluna updatedAt não exista
+      const pacotes = await Pacote.findAll({
+        order: [['id', 'DESC']],
+        limit: 200
+      });
+
+      // Join manual para garantir que a transportadora é anexada sem falhas de Sequelize
+      const conferencias = await Conferencia.findAll({ attributes: ['id', 'transportadora', 'status'] });
+      const confMap = new Map(conferencias.map((c: any) => [c.id, c]));
+
+      const resultado = pacotes.map((p: any) => {
+        const pct = p.toJSON ? p.toJSON() : p;
+        const conf = confMap.get(pct.conferencia_id);
+        if (conf) {
+          pct.conferencia = { transportadora: conf.transportadora, status: conf.status };
+        }
+        return pct;
+      });
+
+      res.status(200).json(resultado);
+    } catch (error: any) {
+      console.error("Erro no Histórico Geral:", error);
       res.status(500).json({ erro: error.message });
     }
   }
