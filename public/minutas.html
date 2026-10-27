@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minutas e Histórico - Euroart</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="auth.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <main class="main-content">
+            <div class="container">
+                <div class="header-with-logo">
+                    <img src="images/euro.png" alt="Logo Euroart" class="logo" onerror="this.style.display='none'">
+                    <h1>Histórico e Minutas de Transporte</h1>
+                </div>
+
+                <p style="color: #64748b; margin-bottom: 20px;">
+                    Abaixo estão as conferências que já foram finalizadas e fechadas. Clique para gerar o PDF oficial de transporte.
+                </p>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Transportadora</th>
+                                <th>Data de Finalização</th>
+                                <th>Volumes</th>
+                                <th>Conferente</th>
+                                <th style="text-align: center;">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaMinutas">
+                            <tr><td colspan="6" class="text-center py-4 text-muted">Carregando histórico...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+            <footer>
+                <div id="versiculo-do-dia"></div>
+                <p>&copy; 2025 Davi Françozo & Felipe Campelo, todos os direitos reservados.</p>
+            </footer>
+        </main>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="menu.js"></script>
+    <script>
+        if (typeof carregarMenu === 'function') {
+            carregarMenu('menu-minutas');
+        }
+
+        async function carregarMinutas() {
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch('http://localhost:3000/api/conferencias/finalizadas', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const conferencias = await res.json();
+                const tbody = document.getElementById('listaMinutas');
+                tbody.innerHTML = '';
+
+                if (!Array.isArray(conferencias) || conferencias.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Nenhuma conferência finalizada encontrada no sistema.</td></tr>';
+                    return;
+                }
+
+                conferencias.forEach(conf => {
+                    const dataFormatada = conf.data_finalizacao ? new Date(conf.data_finalizacao).toLocaleString('pt-BR') : '-';
+                    const qtdVolumes = conf.pacotes ? conf.pacotes.length : 0;
+                    const nomeUsuario = conf.usuario ? conf.usuario.nome : 'Desconhecido';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>#${conf.id}</strong></td>
+                            <td>${conf.transportadora}</td>
+                            <td>${dataFormatada}</td>
+                            <td>${qtdVolumes} pacotes</td>
+                            <td>${nomeUsuario}</td>
+                            <td class="col-center">
+                                <button onclick="abrirMinuta(${conf.id})" class="btn-minutas" style="padding: 6px 12px; font-size: 0.8rem;">
+                                    <i class="fas fa-file-pdf"></i> Gerar PDF
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+            } catch (error) {
+                console.error('Erro ao carregar:', error);
+            }
+        }
+
+        function abrirMinuta(id) {
+            const token = localStorage.getItem('token');
+            // Abre o PDF numa nova aba. Como o PDF é gerado e protegido por Token, passamos via query provisória
+            // ou fazemos um fetch com Blob. O Fetch com Blob é mais seguro:
+            
+            fetch(`http://localhost:3000/api/conferencias/${id}/minuta`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => res.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            })
+            .catch(() => alert('Erro ao gerar o PDF.'));
+        }
+
+        document.addEventListener('DOMContentLoaded', carregarMinutas);
+    </script>
+</body>
+</html>

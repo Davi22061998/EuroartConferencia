@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import bcrypt from 'bcrypt';
+import PDFDocument from 'pdfkit';
 import sequelize from '../config/database';
 import Conferencia from '../models/Conferencia';
 import Remessa from '../models/Remessa';
@@ -414,6 +415,22 @@ export class ConferenciaController {
     }
   }
 
+  static async listarConferenciasFinalizadas(req: Request, res: Response): Promise<void> {
+    try {
+      const conferencias = await Conferencia.findAll({
+        where: { status: 'finalizada' },
+        include: [
+          { model: Pacote, as: 'pacotes' },
+          { model: Usuario, as: 'usuario' }
+        ],
+        order: [['data_finalizacao', 'DESC']]
+      });
+      res.status(200).json(conferencias);
+    } catch (error: any) {
+      res.status(500).json({ erro: error.message });
+    }
+  }
+
   static async obterConferencia(req: Request, res: Response): Promise<void> {
     try {
       const id = Number(req.params.id);
@@ -573,6 +590,129 @@ export class ConferenciaController {
 
       await Pacote.destroy({ where: { id: { [Op.in]: ids.map(Number) } } });
       res.status(200).json({ mensagem: `${ids.length} pacote(s) excluído(s) com sucesso.` });
+    } catch (error: any) {
+      res.status(500).json({ erro: error.message });
+    }
+  }
+
+  static async gerarMinuta(req: Request, res: Response): Promise<void> {
+    try {
+      const id = Number(req.params.id);
+
+      const conferencia = await Conferencia.findByPk(id, {
+        include: [
+          { model: Usuario, as: 'usuario' },
+          {
+            model: Pacote,
+            as: 'pacotes',
+            where: { status: { [Op.in]: ['ok', 'liberado_divergente'] } },
+            required: false,
+            include: [{ model: ItemPacote, as: 'itens' }]
+          }
+        ]
+      });
+
+      if (!conferencia) {
+        res.status(404).json({ erro: 'Conferência não encontrada.' });
+        return;
+      }
+
+      const pacotes = (conferencia as any).pacotes || [];
+      const conferenteNome = (conferencia as any).usuario?.nome || 'Operador Padrão';
+      const dataDoc = conferencia.data_finalizacao ? new Date(conferencia.data_finalizacao).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+
+      const totalVolumes = pacotes.length;
+      const totalPesoGramas = pacotes.reduce((acc: number, p: any) => acc + Number(p.peso_lido_g || 0), 0);
+      const totalPesoKg = (totalPesoGramas / 1000).toFixed(2);
+
+      const doc = new PDFDocument({ margin: 40, size: 'A4' });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="Minuta_${conferencia.transportadora}_${id}.pdf"`);
+      doc.pipe(res);
+
+      // Cabeçalho
+      doc.fontSize(16).font('Helvetica-Bold').text('EUROART - MINUTA DE TRANSPORTE', { align: 'center' });
+      doc.moveDown(1);
+      
+      doc.fontSize(10).font('Helvetica');
+      doc.text(`ID Conferência: #${conferencia.id}`);
+      doc.text(`Transportadora: ${conferencia.transportadora.toUpperCase()}`);
+      doc.text(`Data de Fecho: ${dataDoc}`);
+      doc.text(`Conferente Responsável: ${conferenteNome}`);
+      doc.moveDown(2);
+
+      let y = doc.y;
+      
+      // Cabeçalho da Tabela
+      doc.font('Helvetica-Bold').fontSize(9);
+      doc.text('NF', 40, y);
+      doc.text('CLIENTE', 95, y);
+      doc.text('PRODUTOS (QTD)', 210, y);
+      doc.text('STATUS', 330, y);
+      doc.text('PESO (g)', 410, y);
+      doc.text('DATA/HORA', 470, y);
+      
+      doc.moveTo(40, y + 12).lineTo(550, y + 12).stroke();
+      y += 20;
+
+      doc.font('Helvetica').fontSize(9);
+      for (const p of pacotes) {
+        const itensLista = p.itens || [];
+        
+        // Calcula a altura dinâmica da linha com base na quantidade de SKUs
+        // Cada SKU ocupa 12px de altura. Adicionamos 8px de respiro (padding) no final.
+        const alturaLinha = Math.max(1, itensLista.length) * 12 + 8;
+
+        // Se a linha for ultrapassar o limite da página, cria uma nova
+        if (y + alturaLinha > 750) { doc.addPage(); y = 40; }
+
+        const dataConf = p.data_conferido ? new Date(p.data_conferido).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+        const statusTexto = p.status === 'ok' ? 'OK' : 'LIB. DIVERG.';
+        const clienteResumo = p.razao_social.length > 20 ? p.razao_social.substring(0, 18) + '...' : p.razao_social;
+
+        // Imprime os dados principais na linha inicial
+        doc.text(p.numero_nf, 40, y);
+        doc.text(clienteResumo, 95, y);
+        doc.text(statusTexto, 330, y);
+        doc.text(p.peso_lido_g.toString(), 410, y);
+        doc.text(dataConf, 470, y);
+        
+        // Laço para imprimir os SKUs um embaixo do outro na coluna central
+        let currentY = y;
+        if (itensLista.length === 0) {
+          doc.text('-', 210, currentY);
+        } else {
+          for (const item of itensLista) {
+            // Exemplo de saída: 12120ID (2x)
+            doc.text(`${item.codigo_sku} (${item.quantidade}x)`, 210, currentY);
+            currentY += 12; // Desce 12 pixels para a linha do próximo produto
+          }
+        }
+        
+        // Atualiza a posição Y para a próxima nota fiscal
+        y += alturaLinha;
+      }
+
+      // Rodapé com Totais
+      doc.moveDown(2);
+      y = doc.y;
+      if (y > 650) { doc.addPage(); y = 40; }
+
+      doc.font('Helvetica-Bold').fontSize(11);
+      doc.text(`RESUMO DA CARGA`, 40, y);
+      doc.font('Helvetica').fontSize(10);
+      doc.text(`Volumes Totais: ${totalVolumes} caixas`, 40, y + 15);
+      doc.text(`Peso Total da Carga: ${totalPesoKg} Kg`, 40, y + 30);
+
+      // Assinaturas
+      doc.moveTo(80, y + 100).lineTo(250, y + 100).stroke();
+      doc.text('Assinatura do Motorista', 105, y + 105);
+
+      doc.moveTo(330, y + 100).lineTo(500, y + 100).stroke();
+      doc.text('Assinatura do Conferente', 355, y + 105);
+
+      doc.end();
     } catch (error: any) {
       res.status(500).json({ erro: error.message });
     }

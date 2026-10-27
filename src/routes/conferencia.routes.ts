@@ -12,7 +12,12 @@ router.post('/conferir', ConferenciaController.conferirPacote);
 router.post('/liberar-divergente', ConferenciaController.liberarDivergente);
 
 router.get('/ativas', ConferenciaController.listarConferenciasAbertas);
+
+// A rota /finalizadas deve obrigatoriamente vir ANTES de /:id
+router.get('/finalizadas', ConferenciaController.listarConferenciasFinalizadas);
+
 router.get('/:id', ConferenciaController.obterConferencia);
+router.get('/:id/minuta', ConferenciaController.gerarMinuta);
 router.post('/:id/interromper', ConferenciaController.interromper);
 router.post('/:id/retomar', ConferenciaController.retomar);
 router.post('/:id/finalizar', ConferenciaController.finalizar);
