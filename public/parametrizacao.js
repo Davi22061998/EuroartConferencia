@@ -53,10 +53,14 @@ async function carregarCaixas() {
 async function salvarCaixa(e) {
     e.preventDefault();
     const id = document.getElementById('caixaId').value;
+    
+    // Converte a vírgula para ponto e limpa espaços
+    const pesoLimpo = document.getElementById('caixaPeso').value.replace(',', '.').trim();
+
     const payload = {
         codigo_sku: document.getElementById('caixaSku').value,
         nome: document.getElementById('caixaNome').value,
-        peso_gramas: document.getElementById('caixaPeso').value,
+        peso_gramas: pesoLimpo,
         descricao: document.getElementById('caixaDescricao').value
     };
 
@@ -155,11 +159,16 @@ async function carregarProdutos() {
 async function salvarProduto(e) {
     e.preventDefault();
     const id = document.getElementById('produtoId').value;
+    
+    // Converte a vírgula para ponto e limpa espaços
+    const pesoLimpo = document.getElementById('produtoPeso').value.replace(',', '.').trim();
+    const tolLimpa = document.getElementById('produtoTolerancia').value.replace(',', '.').trim();
+
     const payload = {
         codigo_sku: document.getElementById('produtoSku').value,
         nome: document.getElementById('produtoNome').value,
-        peso_unitario_gramas: document.getElementById('produtoPeso').value,
-        tolerancia_peso_porcento: document.getElementById('produtoTolerancia').value
+        peso_unitario_gramas: pesoLimpo,
+        tolerancia_peso_porcento: tolLimpa
     };
 
     const url = id ? `${API_BASE}/produtos/${id}` : `${API_BASE}/produtos`;

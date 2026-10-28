@@ -7,6 +7,37 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="auth.js"></script>
+    <style>
+        /* Estilo injetado para forçar as abas a parecerem botões clicáveis */
+        .tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+        .tab-button {
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #475569;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        .tab-button:hover {
+            background-color: #e2e8f0;
+            color: #1e293b;
+        }
+        .tab-button.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #2563eb;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+        }
+    </style>
 </head>
 <body>
     <div class="app-layout">
@@ -36,7 +67,10 @@
                         <input type="hidden" id="caixaId">
                         <input type="text" id="caixaSku" placeholder="SKU / Barcode da Caixa" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
                         <input type="text" id="caixaNome" placeholder="Nome (Ex: Caixa Padrão P)" required style="flex: 1.5; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                        <input type="number" id="caixaPeso" placeholder="Peso Tara (g)" step="0.01" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        
+                        <!-- Alterado para type="text" para aceitar vírgulas sem bugar o navegador -->
+                        <input type="text" id="caixaPeso" placeholder="Peso Tara (g)" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        
                         <input type="text" id="caixaDescricao" placeholder="Descrição (opcional)" style="flex: 1.5; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
                         <button type="submit" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;"><i class="fas fa-save"></i> Salvar Caixa</button>
                     </form>
@@ -69,8 +103,11 @@
                         <input type="hidden" id="produtoId">
                         <input type="text" id="produtoSku" placeholder="Código SKU" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
                         <input type="text" id="produtoNome" placeholder="Nome / Descrição" required style="flex: 2; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                        <input type="number" id="produtoPeso" placeholder="Peso Unit. (g)" step="0.01" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                        <input type="number" id="produtoTolerancia" placeholder="Tolerância (%)" step="0.1" value="2.0" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        
+                        <!-- Alterado para type="text" -->
+                        <input type="text" id="produtoPeso" placeholder="Peso Unit. (g)" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <input type="text" id="produtoTolerancia" placeholder="Tolerância (%)" value="2.0" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        
                         <button type="submit" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;"><i class="fas fa-save"></i> Salvar Produto</button>
                     </form>
 
