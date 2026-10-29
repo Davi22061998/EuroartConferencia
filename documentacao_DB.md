@@ -24,13 +24,13 @@ senha_hash (VARCHAR): Armazena a senha criptografada via Bcrypt por questões de
 
 Objetivo: Representar uma sessão de trabalho contínua para uma transportadora específica.
 
-Justificativa de Negócio: Na Euroart, a expedição é agrupada por transportadora. Uma conferência agrupa múltiplas importações (remessas) num único lote lógico até que o camião seja carregado.
+Justificativa de Negócio: Na Euroart, a expedição é agrupada por transportadora. Uma conferência agrupa múltiplas importações (remessas) num único lote lógico até que o caminhão seja carregado.
 
 Campos Principais:
 
 transportadora (VARCHAR): Define o alvo logístico do lote.
 
-status (VARCHAR): Controla a máquina de estados ('em_andamento', 'interrompida', 'finalizada').
+status (VARCHAR): Controla a máquina de status ('em_andamento', 'interrompida', 'finalizada').
 
 Relacionamentos:
 
