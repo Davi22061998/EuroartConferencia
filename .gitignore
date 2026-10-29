@@ -12,6 +12,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # teste de remessa json
 remessa_teste.json
 gerar_migrations.js
+testes-api.js
 
 
 # Runtime data
