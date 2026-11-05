@@ -33,9 +33,12 @@ const PORT = process.env.PORT || 3000;
 sequelize.authenticate().then(() => {
   console.log('Conexão com o banco de dados MySQL estabelecida com sucesso!');
   app.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
-    console.log(`Acesse em: http://localhost:${PORT}/login.html`);
+    console.log(`Servidor a rodar na porta ${PORT}`);
+    console.log(process.env.DATABASE_URL 
+      ? 'Modo: NUVEM (Render/Aiven) ativado!' 
+      : `Modo: LOCAL. Acesse em: http://localhost:${PORT}/login.html`
+    );
   });
 }).catch((err) => {
   console.error('Erro ao conectar ao banco de dados:', err);
-});
+  });
