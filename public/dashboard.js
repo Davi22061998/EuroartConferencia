@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:3000/api/conferencias/dashboard', {
+        const res = await fetch('/api/conferencias/dashboard', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         

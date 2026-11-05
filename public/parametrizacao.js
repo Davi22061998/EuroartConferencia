@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:3000/api/parametrizacao';
+const API_BASE = '/api/parametrizacao';
 
 function obterToken() {
     return localStorage.getItem('token') || '';

@@ -4,7 +4,7 @@ let filtroAtivo = false;
 let filtroTermo = '';
 let pesoAtualBalanca = 0;
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = '/api';
 
 function obterTokenAtual() {
     return localStorage.getItem('token') || '';
@@ -55,14 +55,15 @@ function iniciarMonitoramentoBalanca() {
             const display = document.getElementById('displayPesoBalanca');
             if (!display) return; 
 
-            const res = await fetch('http://balanca-euroart.local/peso');
+            // Se o ESP32 enviar o peso para o backend, pode consultar '/api/balanca/peso'
+            const res = await fetch('/api/balanca/peso');
             if (res.ok) {
                 const dados = await res.json();
-                pesoAtualBalanca = Number(dados.peso_gramas);
+                pesoAtualBalanca = Number(dados.peso_gramas || dados.peso || 0);
                 display.textContent = `${pesoAtualBalanca.toFixed(2)} g`;
             }
         } catch {
-            // Ignora silenciosamente se o ESP32 estiver offline
+            // Ignora silenciosamente se o ESP32/endpoint estiver offline
         }
     }, 1000);
 }

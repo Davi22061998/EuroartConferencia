@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/api/auth';
+const API_URL = '/api/auth';
 let isSetupMode = false;
 
 // Função que roda ao abrir a página para checar se o banco está vazio
