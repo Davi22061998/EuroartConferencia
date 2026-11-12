@@ -31,12 +31,15 @@ async function carregarCaixas() {
         }
 
         caixas.forEach(c => {
+            const sku = c.codigo_sku || c.sku || '-';
+            const peso = Number(c.peso_gramas ?? c.peso ?? 0);
+
             tbody.innerHTML += `
                 <tr>
                     <td>#${c.id}</td>
-                    <td><strong>${c.codigo_sku}</strong></td>
+                    <td><strong>${sku}</strong></td>
                     <td>${c.nome}</td>
-                    <td>${Number(c.peso_gramas).toFixed(2)} g</td>
+                    <td>${peso.toFixed(2)} g</td>
                     <td>${c.descricao || '-'}</td>
                     <td class="col-center">
                         <button onclick='editarCaixa(${JSON.stringify(c)})' style="background:#3b82f6; color:#fff; border:none; padding:5px 8px; border-radius:4px; cursor:pointer;"><i class="fas fa-edit"></i></button>
@@ -54,14 +57,18 @@ async function salvarCaixa(e) {
     e.preventDefault();
     const id = document.getElementById('caixaId').value;
     
-    // Converte a vírgula para ponto e limpa espaços
-    const pesoLimpo = document.getElementById('caixaPeso').value.replace(',', '.').trim();
+    const skuLimpo = document.getElementById('caixaSku').value.trim();
+    const nomeLimpo = document.getElementById('caixaNome').value.trim();
+    const pesoLimpo = parseFloat(document.getElementById('caixaPeso').value.replace(',', '.').trim());
+    const descLimpa = document.getElementById('caixaDescricao').value.trim();
 
     const payload = {
-        codigo_sku: document.getElementById('caixaSku').value,
-        nome: document.getElementById('caixaNome').value,
+        codigo_sku: skuLimpo,
+        sku: skuLimpo,
+        nome: nomeLimpo,
         peso_gramas: pesoLimpo,
-        descricao: document.getElementById('caixaDescricao').value
+        peso: pesoLimpo,
+        descricao: descLimpa
     };
 
     const url = id ? `${API_BASE}/caixas/${id}` : `${API_BASE}/caixas`;
@@ -84,7 +91,7 @@ async function salvarCaixa(e) {
             mostrarMensagem("Caixa salva com sucesso!", "success");
         } else {
             const erro = await res.json();
-            mostrarMensagem(erro.erro || "Erro ao salvar caixa.", "error");
+            mostrarMensagem(erro.erro || erro.message || "Erro ao salvar caixa.", "error");
         }
     } catch (err) {
         mostrarMensagem("Erro de comunicação.", "error");
@@ -93,9 +100,9 @@ async function salvarCaixa(e) {
 
 function editarCaixa(caixa) {
     document.getElementById('caixaId').value = caixa.id;
-    document.getElementById('caixaSku').value = caixa.codigo_sku;
-    document.getElementById('caixaNome').value = caixa.nome;
-    document.getElementById('caixaPeso').value = caixa.peso_gramas;
+    document.getElementById('caixaSku').value = caixa.codigo_sku || caixa.sku || '';
+    document.getElementById('caixaNome').value = caixa.nome || '';
+    document.getElementById('caixaPeso').value = caixa.peso_gramas ?? caixa.peso ?? '';
     document.getElementById('caixaDescricao').value = caixa.descricao || '';
 }
 
@@ -137,13 +144,18 @@ async function carregarProdutos() {
         }
 
         produtos.forEach(p => {
+            const sku = p.codigo_sku || p.sku || '-';
+            const nome = p.nome || p.descricao || '-';
+            const peso = Number(p.peso_unitario_gramas ?? p.peso ?? 0);
+            const tolerancia = Number(p.tolerancia_peso_porcento ?? p.tolerancia ?? 0);
+
             tbody.innerHTML += `
                 <tr>
                     <td>#${p.id}</td>
-                    <td><strong>${p.codigo_sku}</strong></td>
-                    <td>${p.nome || p.descricao || '-'}</td>
-                    <td>${Number(p.peso_unitario_gramas).toFixed(2)} g</td>
-                    <td>${Number(p.tolerancia_peso_porcento).toFixed(1)}%</td>
+                    <td><strong>${sku}</strong></td>
+                    <td>${nome}</td>
+                    <td>${peso.toFixed(2)} g</td>
+                    <td>${tolerancia.toFixed(1)}%</td>
                     <td class="col-center">
                         <button onclick='editarProduto(${JSON.stringify(p)})' style="background:#3b82f6; color:#fff; border:none; padding:5px 8px; border-radius:4px; cursor:pointer;"><i class="fas fa-edit"></i></button>
                         <button onclick='excluirProduto(${p.id})' style="background:#ef4444; color:#fff; border:none; padding:5px 8px; border-radius:4px; cursor:pointer;"><i class="fas fa-trash"></i></button>
@@ -160,14 +172,20 @@ async function salvarProduto(e) {
     e.preventDefault();
     const id = document.getElementById('produtoId').value;
     
-    // Converte a vírgula para ponto e limpa espaços
-    const pesoLimpo = document.getElementById('produtoPeso').value.replace(',', '.').trim();
-    const tolLimpa = document.getElementById('produtoTolerancia').value.replace(',', '.').trim();
+    const skuLimpo = document.getElementById('produtoSku').value.trim();
+    const nomeLimpo = document.getElementById('produtoNome').value.trim();
+    const pesoLimpo = parseFloat(document.getElementById('produtoPeso').value.replace(',', '.').trim());
+    const tolStr = document.getElementById('produtoTolerancia').value.replace(',', '.').trim();
+    const tolLimpa = tolStr === '' ? 5 : parseFloat(tolStr);
 
     const payload = {
-        codigo_sku: document.getElementById('produtoSku').value,
-        nome: document.getElementById('produtoNome').value,
+        sku: skuLimpo,
+        codigo_sku: skuLimpo,
+        nome: nomeLimpo,
+        descricao: nomeLimpo,
+        peso: pesoLimpo,
         peso_unitario_gramas: pesoLimpo,
+        tolerancia: tolLimpa,
         tolerancia_peso_porcento: tolLimpa
     };
 
@@ -191,7 +209,7 @@ async function salvarProduto(e) {
             mostrarMensagem("Produto salvo com sucesso!", "success");
         } else {
             const erro = await res.json();
-            mostrarMensagem(erro.erro || "Erro ao salvar produto.", "error");
+            mostrarMensagem(erro.erro || erro.message || "Erro ao salvar produto.", "error");
         }
     } catch (err) {
         mostrarMensagem("Erro de comunicação.", "error");
@@ -200,10 +218,10 @@ async function salvarProduto(e) {
 
 function editarProduto(produto) {
     document.getElementById('produtoId').value = produto.id;
-    document.getElementById('produtoSku').value = produto.codigo_sku;
+    document.getElementById('produtoSku').value = produto.codigo_sku || produto.sku || '';
     document.getElementById('produtoNome').value = produto.nome || produto.descricao || '';
-    document.getElementById('produtoPeso').value = produto.peso_unitario_gramas;
-    document.getElementById('produtoTolerancia').value = produto.tolerancia_peso_porcento;
+    document.getElementById('produtoPeso').value = produto.peso_unitario_gramas ?? produto.peso ?? '';
+    document.getElementById('produtoTolerancia').value = produto.tolerancia_peso_porcento ?? produto.tolerancia ?? '';
 }
 
 function excluirProduto(id) {
