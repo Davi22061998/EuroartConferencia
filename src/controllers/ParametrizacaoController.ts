@@ -101,7 +101,8 @@ export class ParametrizacaoController {
 
   static async salvarSku(req: Request, res: Response): Promise<void> {
     try {
-      const { id, codigo_sku, nome_produto, peso_unitario_gramas, tolerancia_peso_porcento } = req.body;
+      const { id, codigo_sku, peso_unitario_gramas, tolerancia_peso_porcento } = req.body;
+      const nome_produto = req.body.nome_produto || req.body.nome || req.body.descricao;
 
       if (!codigo_sku || !nome_produto || peso_unitario_gramas === undefined || peso_unitario_gramas === null || peso_unitario_gramas === '') {
         res.status(400).json({ erro: 'Código SKU, Nome do Produto e Peso Unitário são obrigatórios.' });
