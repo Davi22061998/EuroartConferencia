@@ -56,12 +56,18 @@
         async function carregarMinutas() {
             try {
                 const token = localStorage.getItem('token');
-                const res = await fetch('http://localhost:3000/api/conferencias/finalizadas', {
+                const res = await fetch('/api/conferencias/finalizadas', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                const conferencias = await res.json();
                 const tbody = document.getElementById('listaMinutas');
+
+                if (!res.ok) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4" style="color: #ef4444;">Erro ao carregar histórico de minutas.</td></tr>';
+                    return;
+                }
+
+                const conferencias = await res.json();
                 tbody.innerHTML = '';
 
                 if (!Array.isArray(conferencias) || conferencias.length === 0) {
@@ -92,20 +98,33 @@
 
             } catch (error) {
                 console.error('Erro ao carregar:', error);
+                const tbody = document.getElementById('listaMinutas');
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4" style="color: #ef4444;">Falha de conexão com o servidor.</td></tr>';
+                }
             }
         }
 
         function abrirMinuta(id) {
             const token = localStorage.getItem('token');
-            fetch(`http://localhost:3000/api/conferencias/${id}/minuta`, {
+            fetch(`/api/conferencias/${id}/minuta`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
-            .then(res => res.blob())
+            .then(res => {
+                if (!res.ok) throw new Error('Falha ao gerar minuta');
+                return res.blob();
+            })
             .then(blob => {
                 const url = window.URL.createObjectURL(blob);
                 window.open(url, '_blank');
             })
-            .catch(() => alert('Erro ao gerar o PDF.'));
+            .catch(() => {
+                if (typeof mostrarMensagem === 'function') {
+                    mostrarMensagem('Erro ao gerar o PDF da minuta.', 'error');
+                } else {
+                    alert('Erro ao gerar o PDF.');
+                }
+            });
         }
 
         document.addEventListener('DOMContentLoaded', carregarMinutas);
