@@ -1,52 +1,50 @@
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+    const filtro = document.getElementById('filtroStatusHistorico');
+    if (filtro) filtro.addEventListener('change', carregarHistorico);
+    carregarHistorico();
+});
+
+async function carregarHistorico() {
+    const tbody = document.getElementById('listaHistoricoGeral');
+    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+    const admin = usuario.perfil === 'admin';
+    const filtro = document.getElementById('filtroStatusHistorico');
+    if (filtro) filtro.style.display = admin ? '' : 'none';
     try {
         const token = localStorage.getItem('token');
-        const res = await fetch('/api/conferencias/historico-geral', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        const tbody = document.getElementById('listaHistoricoGeral');
-        
-        if (!res.ok) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4" style="color: #ef4444;">Erro ao aceder aos dados do histórico.</td></tr>';
-            return;
-        }
-
+        const status = admin && filtro && filtro.value === 'bloqueados' ? '?status=bloqueados' : '';
+        const res = await fetch('/api/conferencias/historico-geral' + status, { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) { tbody.innerHTML = '<tr><td colspan="8">Erro ao acessar o histórico.</td></tr>'; return; }
         const pacotes = await res.json();
         tbody.innerHTML = '';
-
-        if (!Array.isArray(pacotes) || pacotes.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Nenhum pacote processado até ao momento.</td></tr>';
-            return;
-        }
-
+        if (!Array.isArray(pacotes) || pacotes.length === 0) { tbody.innerHTML = '<tr><td colspan="8">Nenhum pedido encontrado.</td></tr>'; return; }
         pacotes.forEach(p => {
-            // Garante que apanha uma data válida para a conferência
-            const dataBruta = p.data_conferido || p.updatedAt || p.createdAt || new Date();
-            const dataConf = new Date(dataBruta).toLocaleString('pt-BR');
-            let badge = '';
-            
-            if(p.status === 'ok') badge = '<span style="color:#10b981; font-weight:bold;">OK</span>';
-            else if(p.status === 'liberado_divergente') badge = '<span style="color:#f59e0b; font-weight:bold;">LIBERADO</span>';
-            else if(p.status === 'divergente_peso') badge = '<span style="color:#ef4444; font-weight:bold;">ERRO PESO</span>';
-            else badge = `<span style="color:#94a3b8; font-weight:bold;">${String(p.status).toUpperCase()}</span>`;
-
-            tbody.innerHTML += `
-                <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td>${dataConf}</td>
-                    <td><strong>${p.numero_nf || '-'}</strong></td>
-                    <td>${p.razao_social || '-'}</td>
-                    <td>${p.conferencia && p.conferencia.transportadora ? p.conferencia.transportadora : 'Desconhecida'}</td>
-                    <td class="col-center">${badge}</td>
-                    <td>${p.peso_lido_g ? p.peso_lido_g + 'g' : '-'}</td>
-                    <td style="font-size: 0.85em; color: #64748b;">${p.justificativa_liberacao || '-'}</td>
-                </tr>
-            `;
+            const data = p.data_conferido ? new Date(p.data_conferido).toLocaleString('pt-BR') : '-';
+            const nomes = { ok: 'OK', liberado_divergente: 'LIBERADO COM DIVERGÊNCIA', divergente_peso: 'DIVERGÊNCIA DE PESO', bloqueado: 'BLOQUEADO - AGUARDANDO APROVAÇÃO', bloqueado_aprovacao: 'BLOQUEADO - AGUARDANDO APROVAÇÃO', cancelado: 'CANCELADO', pendente: 'PENDENTE' };
+            const acoes = admin && ['bloqueado', 'bloqueado_aprovacao'].includes(p.status)
+                ? '<button type="button" onclick="decidirPacoteHistorico(' + p.id + ', \'aprovar\')">Aprovar</button> <button type="button" onclick="decidirPacoteHistorico(' + p.id + ', \'cancelar\')">Cancelar pedido</button>'
+                : (admin ? '-' : '');
+            const tr = document.createElement('tr');
+            [data, p.numero_nf || '-', p.razao_social || '-', p.conferencia?.transportadora || 'Desconhecida', nomes[p.status] || String(p.status).toUpperCase(), p.peso_lido_g == null ? '-' : p.peso_lido_g + 'g', p.justificativa_liberacao || '-', acoes].forEach((valor, i) => {
+                const td = document.createElement('td');
+                if (i === 7 && admin) td.innerHTML = valor; else td.textContent = valor;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
         });
+    } catch (err) { console.error('Erro ao carregar histórico', err); tbody.innerHTML = '<tr><td colspan="8">Falha de ligação ao servidor.</td></tr>'; }
+}
 
-    } catch (err) {
-        console.error('Erro ao carregar histórico', err);
-        const tbody = document.getElementById('listaHistoricoGeral');
-        if(tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4" style="color: #ef4444;">Falha de ligação ao servidor.</td></tr>';
-    }
-});
+async function decidirPacoteHistorico(id, decisao) {
+    const aprovacao = decisao === 'aprovar';
+    const justificativa = window.prompt(aprovacao ? 'Justificativa para aprovar o envio com divergência:' : 'Motivo do cancelamento deste pedido:');
+    if (!justificativa || !justificativa.trim()) return;
+    try {
+        const endpoint = aprovacao ? 'aprovar-bloqueado' : 'cancelar-bloqueado';
+        const res = await fetch('/api/conferencias/pacotes/' + id + '/' + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }, body: JSON.stringify({ justificativa: justificativa.trim() }) });
+        const dados = await res.json();
+        if (!res.ok) { alert(dados.erro || 'Não foi possível atualizar o pedido.'); return; }
+        alert(dados.mensagem);
+        carregarHistorico();
+    } catch { alert('Falha de ligação à API.'); }
+}
