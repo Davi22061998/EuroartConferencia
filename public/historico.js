@@ -22,7 +22,7 @@ async function carregarHistorico() {
             const data = p.data_conferido ? new Date(p.data_conferido).toLocaleString('pt-BR') : '-';
             const nomes = { ok: 'OK', liberado_divergente: 'LIBERADO COM DIVERGÊNCIA', divergente_peso: 'DIVERGÊNCIA DE PESO', bloqueado: 'BLOQUEADO - AGUARDANDO APROVAÇÃO', bloqueado_aprovacao: 'BLOQUEADO - AGUARDANDO APROVAÇÃO', cancelado: 'CANCELADO', pendente: 'PENDENTE' };
             const acoes = admin && ['bloqueado', 'bloqueado_aprovacao'].includes(p.status)
-                ? '<button type="button" onclick="decidirPacoteHistorico(' + p.id + ', \'aprovar\')">Aprovar</button> <button type="button" onclick="decidirPacoteHistorico(' + p.id + ', \'cancelar\')">Cancelar pedido</button>'
+                ? '<button type="button" onclick="abrirAcoesHistorico(' + p.id + ')">Reabrir análise</button><div id="acoes-historico-' + p.id + '" style="display:none"><button type="button" onclick="decidirPacoteHistorico(' + p.id + ', \'aprovar\')">Aprovar</button> <button type="button" onclick="decidirPacoteHistorico(' + p.id + ', \'cancelar\')">Cancelar pedido</button></div>'
                 : (admin ? '-' : '');
             const tr = document.createElement('tr');
             [data, p.numero_nf || '-', p.razao_social || '-', p.conferencia?.transportadora || 'Desconhecida', nomes[p.status] || String(p.status).toUpperCase(), p.peso_lido_g == null ? '-' : p.peso_lido_g + 'g', p.justificativa_liberacao || '-', acoes].forEach((valor, i) => {
@@ -48,3 +48,5 @@ async function decidirPacoteHistorico(id, decisao) {
         carregarHistorico();
     } catch { alert('Falha de ligação à API.'); }
 }
+
+function abrirAcoesHistorico(id) { const el = document.getElementById('acoes-historico-' + id); if (el) el.style.display = 'block'; }
