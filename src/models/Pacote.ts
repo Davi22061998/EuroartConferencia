@@ -14,7 +14,7 @@ export interface PacoteAttributes {
   razao_social?: string;
   descricao_produto?: string;
   uf: string;
-  status: 'pendente' | 'ok' | 'divergente_peso' | 'bloqueado' | 'liberado_divergente' | 'duplicado';
+  status: 'pendente' | 'ok' | 'divergente_peso' | 'bloqueado' | 'bloqueado_aprovacao' | 'cancelado' | 'liberado_divergente' | 'duplicado';
   possui_guia_icms: boolean;
   caixa_id?: number | null;
   peso_esperado_g?: number | null;
