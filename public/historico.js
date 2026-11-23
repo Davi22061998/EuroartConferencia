@@ -9,6 +9,7 @@ async function carregarHistorico() {
     const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
     const admin = usuario.perfil === 'admin';
     const filtro = document.getElementById('filtroStatusHistorico');
+    document.querySelectorAll('.admin-only').forEach(el => { el.style.display = admin ? '' : 'none'; });
     if (filtro) filtro.style.display = admin ? '' : 'none';
     try {
         const token = localStorage.getItem('token');
@@ -30,6 +31,7 @@ async function carregarHistorico() {
                 if (i === 7 && admin) td.innerHTML = valor; else td.textContent = valor;
                 tr.appendChild(td);
             });
+            if (!admin) tr.lastElementChild.style.display = 'none';
             tbody.appendChild(tr);
         });
     } catch (err) { console.error('Erro ao carregar histórico', err); tbody.innerHTML = '<tr><td colspan="8">Falha de ligação ao servidor.</td></tr>'; }
