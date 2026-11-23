@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="theme.js"></script>
     <title>Login - Euroart Conferência</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         body { background-color: var(--cor-tabela-header); }
         .login-container {
@@ -42,8 +44,9 @@
         .login-form button:hover { background-color: #45a049; }
     </style>
 </head>
-<body>
+<body class="login-page">
     <div class="login-container">
+        <button type="button" class="theme-toggle login-theme-toggle" data-theme-toggle onclick="alternarTema()"><i class="fas fa-moon" aria-hidden="true"></i><span>Modo escuro</span></button>
         <img src="images/euro.png" alt="Logo Euroart" style="max-height: 80px; margin-bottom: 20px;">
         <h2 id="form-title">Acesso ao Sistema</h2>
         

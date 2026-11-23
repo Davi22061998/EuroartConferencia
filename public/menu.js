@@ -35,6 +35,8 @@ function carregarMenu(itemAtivoId) {
                 ${menuAdminHTML}
             </ul>
 
+            <button type="button" class="theme-toggle" data-theme-toggle onclick="alternarTema()"><i class="fas fa-moon" aria-hidden="true"></i><span>Modo escuro</span></button>
+
             <button class="logout-btn" onclick="fazerLogout()">
                 <i class="fas fa-sign-out-alt"></i> Sair
             </button>
