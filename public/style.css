@@ -779,3 +779,16 @@ tr.row-locked{background:rgba(124,58,237,.06)}
 :root[data-theme="dark"] .dashboard-quantity{color:var(--good)!important}
 @media(max-width:1000px){.kpi-container{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:600px){.kpi-container{grid-template-columns:repeat(2,minmax(0,1fr))!important}.page-description{margin-top:-8px}}
+
+/* Abas e formulários da parametrização seguem o tema ativo */
+.tabs{border-color:var(--line)!important}
+.tab-button{background:var(--panel-soft)!important;border-color:var(--line)!important;color:var(--muted)!important;border-radius:9px!important}
+.tab-button:hover{background:var(--panel-hover)!important;color:var(--ink)!important}
+.tab-button.active{background:var(--brand)!important;color:#fff!important;border-color:var(--brand)!important;box-shadow:none!important}
+:root[data-theme="dark"] .tab-button.active{background:#3569bd!important;border-color:#3569bd!important}
+#formCaixa,#formProduto,#form-usuario{color:var(--ink)}
+#formCaixa input,#formProduto input,#form-usuario input,#formCaixa select,#formProduto select,#form-usuario select{background:var(--panel-bg);color:var(--ink);border:1px solid var(--line)!important;border-radius:9px!important;min-height:42px}
+#formCaixa input:focus,#formProduto input:focus,#form-usuario input:focus{border-color:var(--brand)!important}
+#formCaixa button[type="submit"],#formProduto button[type="submit"]{border-radius:9px!important;background:var(--brand)!important;color:#fff!important}
+:root[data-theme="dark"] .container[style*="background-color: #f8fafc"]{background:var(--panel-soft)!important;border-color:var(--line)!important}
+:root[data-theme="dark"] .container p[style*="color: #64748b"]{color:var(--muted)!important}
