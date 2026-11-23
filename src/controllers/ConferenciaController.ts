@@ -255,6 +255,11 @@ export class ConferenciaController {
         return;
       }
 
+      if (pacote.status === 'cancelado') {
+        res.status(403).json({ status: 'cancelado', erro: 'Este pedido foi cancelado por um administrador.' });
+        return;
+      }
+
       if (pacote.status === 'bloqueado' || pacote.status === 'bloqueado_aprovacao') {
         res.status(403).json({
           status: 'bloqueado',
@@ -610,7 +615,25 @@ export class ConferenciaController {
       conferencia.data_finalizacao = new Date();
       await conferencia.save();
 
-      res.status(200).json({ mensagem: 'Conferência finalizada com sucesso!', conferencia });
+      const minutaExistente: any = await sequelize.query(
+        'SELECT id FROM minutas WHERE conferencia_id = ? LIMIT 1',
+        { replacements: [id], type: 'SELECT' as any }
+      );
+      let minutaId: number | null = minutaExistente[0]?.id || null;
+      if (!minutaId) {
+        const [resultado]: any = await sequelize.query(
+          'INSERT INTO minutas (numero_minuta, conferencia_id, data_emissao) VALUES (?, ?, NOW())',
+          { replacements: [`MIN-${id}-${Date.now()}`, id] }
+        );
+        minutaId = resultado?.insertId || null;
+      }
+
+      res.status(200).json({
+        mensagem: 'Conferência finalizada e minuta gerada com sucesso!',
+        conferencia,
+        minuta_id: minutaId,
+        minuta_url: `/api/conferencias/${id}/minuta`
+      });
     } catch (error: any) {
       res.status(500).json({ erro: error.message });
     }
