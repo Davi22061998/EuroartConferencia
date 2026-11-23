@@ -152,7 +152,7 @@ async function processarBipagem(codigo) {
             abrirModalDuplicado(resposta.pacote);
         } else if (res.status === 422) {
             aplicarEfeitoVisual("error");
-            if (resposta.status === 'bloqueado') {
+            if (resposta.status === 'bloqueado' || resposta.status === 'bloqueado_aprovacao') {
                 abrirModalBloqueio(codigo, resposta.detalhes);
             } else {
                 abrirModalDivergencia(codigo, resposta.detalhes);
@@ -371,7 +371,8 @@ function renderizarTabela() {
             case 'ok': badgeStatus = '<span class="status-badge badge-ok"><i class="fas fa-check"></i> OK</span>'; rowClass = 'row-ok'; break;
             case 'liberado_divergente': badgeStatus = '<span class="status-badge badge-warning" title="Liberado por superior"><i class="fas fa-user-shield"></i> LIB. DIVERGENTE</span>'; rowClass = 'row-warning'; break;
             case 'divergente_peso': badgeStatus = '<span class="status-badge badge-danger"><i class="fas fa-weight-hanging"></i> PESO DIVERG.</span>'; rowClass = 'row-danger'; break;
-            case 'bloqueado': badgeStatus = '<span class="status-badge badge-locked"><i class="fas fa-lock"></i> BLOQUEADO</span>'; rowClass = 'row-locked'; break;
+            case 'bloqueado': case 'bloqueado_aprovacao': badgeStatus = '<span class="status-badge badge-locked"><i class="fas fa-lock"></i> BLOQUEADO - AGUARDANDO APROVAÇÃO</span>'; rowClass = 'row-locked'; break;
+            case 'cancelado': badgeStatus = '<span class="status-badge badge-duplicate"><i class="fas fa-ban"></i> CANCELADO</span>'; rowClass = 'row-duplicate'; break;
             case 'duplicado': badgeStatus = '<span class="status-badge badge-duplicate"><i class="fas fa-copy"></i> DUPLICADO</span>'; rowClass = 'row-duplicate'; break;
             default: badgeStatus = '<span class="status-badge badge-pending"><i class="fas fa-clock"></i> PENDENTE</span>'; rowClass = '';
         }
@@ -739,4 +740,19 @@ window.cancelarCaixaAtiva = cancelarCaixaAtiva;
 window.fecharModalDivergencia = fecharModalDivergencia;
 window.fecharModalBloqueio = fecharModalBloqueio;
 window.submeterLiberacaoSuperior = submeterLiberacaoSuperior;
+window.decidirPacoteBloqueado = decidirPacoteBloqueado;
 window.handleFileImport = handleFileImport;
+async function decidirPacoteBloqueado(pacoteId, decisao) {
+    if (obterUsuarioAtual().perfil !== 'admin') { mostrarMensagem('Ação exclusiva para administradores.', 'error'); return; }
+    const aprovacao = decisao === 'aprovar';
+    const justificativa = window.prompt(aprovacao ? 'Justificativa para aprovar o envio com divergência:' : 'Motivo do cancelamento deste pedido:');
+    if (!justificativa || !justificativa.trim()) return;
+    const endpoint = aprovacao ? 'aprovar-bloqueado' : 'cancelar-bloqueado';
+    try {
+        const res = await fetch(API_BASE + '/conferencias/pacotes/' + pacoteId + '/' + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + obterTokenAtual() }, body: JSON.stringify({ justificativa: justificativa.trim() }) });
+        const dados = await res.json();
+        if (!res.ok) { mostrarMensagem(dados.erro || 'Falha ao atualizar pedido.', 'error'); return; }
+        mostrarMensagem(dados.mensagem, 'success');
+        await recarregarConferenciaAtual();
+    } catch { mostrarMensagem('Falha de ligação à API.', 'error'); }
+}
