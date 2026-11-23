@@ -154,6 +154,7 @@ async function processarBipagem(codigo) {
             aplicarEfeitoVisual("error");
             if (resposta.status === 'bloqueado' || resposta.status === 'bloqueado_aprovacao') {
                 abrirModalBloqueio(codigo, resposta.detalhes);
+                await recarregarConferenciaAtual();
             } else {
                 abrirModalDivergencia(codigo, resposta.detalhes);
             }
@@ -353,7 +354,7 @@ function renderizarTabela() {
     }
 
     let pacotes = conferenciaAtual.pacotes;
-    if (filtroAtivo) pacotes = pacotes.filter(p => p.status !== 'ok' && p.status !== 'liberado_divergente');
+    if (filtroAtivo) pacotes = pacotes.filter(p => p.status !== 'ok' && p.status !== 'liberado_divergente' && p.status !== 'cancelado');
     if (filtroTermo) {
         pacotes = pacotes.filter(p =>
             String(p.numero_nf).toLowerCase().includes(filtroTermo) ||
@@ -423,7 +424,7 @@ function atualizarContadores() {
     }
 
     const conferidos = conferenciaAtual.pacotes.filter(p => p.status === 'ok' || p.status === 'liberado_divergente').length;
-    const total = conferenciaAtual.pacotes.length;
+    const total = conferenciaAtual.pacotes.filter(p => p.status !== 'cancelado').length;
     const porcentagem = total > 0 ? Math.round((conferidos / total) * 100) : 0;
 
     contadorEl.innerHTML = `
