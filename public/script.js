@@ -383,7 +383,7 @@ function renderizarTabela() {
         const clienteLimpo = (p.razao_social || '').replace(/[\uFFFD]/g, '');
 
         const acoesAdmin = obterUsuarioAtual().perfil === 'admin' && ['bloqueado', 'bloqueado_aprovacao'].includes(p.status)
-            ? '<td><button type="button" onclick="decidirPacoteBloqueado(' + p.id + ', \'aprovar\')">Aprovar</button> <button type="button" onclick="decidirPacoteBloqueado(' + p.id + ', \'cancelar\')">Cancelar</button></td>'
+            ? '<td><button type="button" onclick="abrirAcoesPacoteBloqueado(' + p.id + ')">Reabrir análise</button><div id="acoes-bloqueado-' + p.id + '" style="display:none"><button type="button" onclick="decidirPacoteBloqueado(' + p.id + ', \'aprovar\')">Aprovar</button> <button type="button" onclick="decidirPacoteBloqueado(' + p.id + ', \'cancelar\')">Cancelar pedido</button></div></td>'
             : (obterUsuarioAtual().perfil === 'admin' ? '<td>-</td>' : '');
         tbody.innerHTML += `
             <tr class="${rowClass}">
@@ -760,3 +760,4 @@ async function decidirPacoteBloqueado(pacoteId, decisao) {
         await recarregarConferenciaAtual();
     } catch { mostrarMensagem('Falha de ligação à API.', 'error'); }
 }
+function abrirAcoesPacoteBloqueado(id) { const el = document.getElementById('acoes-bloqueado-' + id); if (el) el.style.display = 'block'; }
