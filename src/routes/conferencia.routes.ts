@@ -9,7 +9,9 @@ router.use(verificarToken);
 
 router.post('/importar', ConferenciaController.importarRemessa);
 router.post('/conferir', ConferenciaController.conferirPacote);
-router.post('/liberar-divergente', ConferenciaController.liberarDivergente);
+router.post('/liberar-divergente', apenasAdmin, ConferenciaController.liberarDivergente);
+router.post('/pacotes/:pacoteId/aprovar-bloqueado', apenasAdmin, ConferenciaController.aprovarPacoteBloqueado);
+router.post('/pacotes/:pacoteId/cancelar-bloqueado', apenasAdmin, ConferenciaController.cancelarPacoteBloqueado);
 
 router.get('/ativas', ConferenciaController.listarConferenciasAbertas);
 
