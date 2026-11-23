@@ -585,3 +585,10 @@ footer{color:var(--text-secondary)}
 .login-theme-toggle{max-width:190px;margin:0 auto 18px}
 @media(max-width:900px){.app-layout{flex-direction:column}aside.sidebar{width:100%;min-width:0;padding:14px}.sidebar-header{margin-bottom:12px}.sidebar-logo{max-width:130px}.sidebar-menu{flex-direction:row;flex-wrap:wrap}.sidebar-menu li{flex:1 1 180px}.main-content{padding:14px}.container{padding:18px}}
 @media(max-width:600px){.input-section,.filter-section{flex-direction:column}#codigoInput{min-height:48px}.controls button{flex:1 1 145px}.login-container{padding:26px 20px}}
+
+/* Ajustes de contraste para elementos com estilos legados inline */
+:root[data-theme="dark"] .login-container{background-color:var(--surface)!important;color:var(--text-primary);border-color:var(--border-color)}
+:root[data-theme="dark"] .login-container h2{color:var(--text-primary)}
+:root[data-theme="dark"] .container [style*="color: #475569"],:root[data-theme="dark"] .container [style*="color: #64748b"]{color:var(--text-secondary)!important}
+:root[data-theme="dark"] .container [style*="background: #fff"],:root[data-theme="dark"] .container [style*="background: #ffffff"]{background:var(--surface-muted)!important;color:var(--text-primary)}
+:root[data-theme="dark"] .container [style*="background: #fff"] th,:root[data-theme="dark"] .container [style*="background: #ffffff"] th{color:var(--text-secondary)}
