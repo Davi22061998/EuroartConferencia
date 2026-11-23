@@ -16,6 +16,7 @@
             <div class="container">
                 <div class="header-with-logo">
                     <h1>Conferência em Execução</h1>
+                    <p class="page-description">Leitura de volumes, validação de itens e acompanhamento da expedição</p>
                 </div>
 
                 <div class="feedback-message" id="feedbackMessage"></div>
@@ -63,14 +64,19 @@
                 </div>
 
                 <div class="controls">
+                    <button onclick="finalizarConferencia()" class="btn-finalizar" id="btnFinalizar" disabled><i class="fas fa-check-circle"></i> Finalizar conferência</button>
                     <button onclick="interromperConferencia()" class="btn-interromper" id="btnInterromper" disabled><i class="fas fa-pause"></i> Interromper</button>
-                    <button onclick="finalizarConferencia()" class="btn-finalizar" id="btnFinalizar" disabled><i class="fas fa-check-circle"></i> Finalizar</button>
-                    <button onclick="removerUltimaRemessa()" class="btn-reset admin-only" id="btnResetRemessa" disabled><i class="fas fa-undo"></i> Remover Última Remessa</button>
-                    <button onclick="excluirPacotesSelecionados()" class="btn-excluir admin-only" id="btnExcluirPacotes" disabled><i class="fas fa-trash"></i> Excluir Selecionados</button>
-                    <button onclick="excluirConferenciaAtual()" class="btn-excluir admin-only" id="btnExcluirConferencia" disabled style="background: #991b1b;"><i class="fas fa-ban"></i> Excluir Conferência</button>
-                    <button onclick="window.location.href='historico.html'" class="btn-historico"><i class="fas fa-history"></i> Ver Histórico</button>
-                    <button onclick="window.location.href='minutas.html'" class="btn-minutas"><i class="fas fa-file-alt"></i> Ver Minutas</button>
-                    <button onclick="window.location.href='parametrizacao.html'" class="btn-retomar admin-only"><i class="fas fa-boxes"></i> Parametrização</button>
+                    <button onclick="window.location.href='historico.html'" class="btn-historico"><i class="fas fa-history"></i> Histórico</button>
+                    <button onclick="window.location.href='minutas.html'" class="btn-minutas"><i class="fas fa-file-alt"></i> Minutas</button>
+                    <details class="admin-tools admin-only">
+                        <summary><i class="fas fa-sliders-h"></i> Ações administrativas <i class="fas fa-chevron-down"></i></summary>
+                        <div class="admin-tools-panel">
+                            <button onclick="removerUltimaRemessa()" class="btn-reset" id="btnResetRemessa" disabled><i class="fas fa-undo"></i> Remover última remessa</button>
+                            <button onclick="excluirPacotesSelecionados()" class="btn-excluir" id="btnExcluirPacotes" disabled><i class="fas fa-trash"></i> Excluir selecionados</button>
+                            <button onclick="excluirConferenciaAtual()" class="btn-excluir" id="btnExcluirConferencia" disabled><i class="fas fa-ban"></i> Excluir conferência</button>
+                            <button onclick="window.location.href='parametrizacao.html'" class="btn-retomar"><i class="fas fa-boxes"></i> Parametrização</button>
+                        </div>
+                    </details>
                 </div>
 
                 <div class="filter-section">

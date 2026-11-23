@@ -52,8 +52,10 @@ function carregarMenu(itemAtivoId) {
 
     if (itemAtivoId) {
         const itemAtivo = document.getElementById(itemAtivoId);
-        if (itemAtivo) {
-            itemAtivo.classList.add('active');
-        }
+        if (itemAtivo) itemAtivo.classList.add('active');
+    }
+
+    if (typeof window.atualizarBotoesTema === 'function') {
+        window.atualizarBotoesTema(document.documentElement.getAttribute('data-theme') || 'light');
     }
 }
