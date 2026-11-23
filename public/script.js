@@ -497,7 +497,7 @@ function abrirModalBloqueio(codigo, detalhes) {
         <p><strong>Peso Esperado:</strong> ${detalhes.peso_esperado} g</p>
         <p><strong>Peso Lido:</strong> ${detalhes.peso_lido} g</p>
         <p><strong>Faixa Aceita:</strong> ${detalhes.faixa_aceita}</p>
-        <p style="color:#b91c1c;"><strong>Status:</strong> BLOQUEADO NA 2ª TENTATIVA</p>
+        <p style="color:#b91c1c;"><strong>Status:</strong> BLOQUEADO - AGUARDANDO APROVAÇÃO</p>
     `;
     modal.classList.add('visible');
 }
@@ -505,8 +505,6 @@ function abrirModalBloqueio(codigo, detalhes) {
 function fecharModalBloqueio() {
     const modal = document.getElementById('modalBloqueioSuperior');
     if (modal) modal.classList.remove('visible');
-    const form = document.getElementById('formLiberacaoSuperior');
-    if (form) form.reset();
     cancelarCaixaAtiva();
     const input = document.getElementById('codigoInput');
     if(input) input.focus();
