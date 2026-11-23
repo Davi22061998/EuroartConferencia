@@ -84,10 +84,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    tooltip: { backgroundColor: cores.superficie, titleColor: cores.texto, bodyColor: cores.texto, borderColor: cores.grade, borderWidth: 1 }
+                    tooltip: {
+                        backgroundColor: cores.superficie,
+                        titleColor: cores.texto,
+                        bodyColor: cores.texto,
+                        borderColor: cores.grade,
+                        borderWidth: 1,
+                        callbacks: {
+                            title: (items) => {
+                                const indice = items[0]?.dataIndex;
+                                return data.graficoTransportadoras[indice]?.transportadora || 'Desconhecida';
+                            },
+                            label: (context) => `Volumes processados: ${context.formattedValue}`
+                        }
+                    }
                 },
                 scales: {
-                    x: { ticks: { color: cores.texto, maxRotation: 0, minRotation: 0, autoSkip: false, callback: function(value) { const label = this.getLabelForValue(value); return label.length > 17 ? label.slice(0, 16) + '…' : label; } }, grid: { display: false } },
+                    x: {
+                        ticks: { display: false },
+                        grid: { display: false }
+                    },
                     y: { beginAtZero: true, ticks: { color: cores.texto, precision: 0 }, grid: { color: cores.grade } }
                 }
             }

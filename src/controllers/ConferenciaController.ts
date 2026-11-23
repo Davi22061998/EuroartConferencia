@@ -368,13 +368,13 @@ export class ConferenciaController {
 
       const superior = await Usuario.findOne({ where: { email: email_superior } });
       if (!superior || superior.perfil !== 'admin') {
-        res.status(403).json({ erro: 'Credenciais inválidas ou utilizador não possui privilégios de superior.' });
+        res.status(403).json({ erro: 'E-mail ou senha incorretos.' });
         return;
       }
 
       const senhaValida = await bcrypt.compare(senha_superior, superior.senha_hash);
       if (!senhaValida) {
-        res.status(403).json({ erro: 'Senha do superior incorreta.' });
+        res.status(403).json({ erro: 'E-mail ou senha incorretos.' });
         return;
       }
 
