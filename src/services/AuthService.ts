@@ -46,12 +46,12 @@ export class AuthService {
   static async login(email: string, senha: string) {
     const usuario = await Usuario.findOne({ where: { email } });
     if (!usuario) {
-      throw new Error('E-mail ou senha inválidos.');
+      throw new Error('E-mail ou senha incorretos.');
     }
 
     const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
     if (!senhaValida) {
-      throw new Error('E-mail ou senha inválidos.');
+      throw new Error('E-mail ou senha incorretos.');
     }
 
     const secret = process.env.JWT_SECRET || 'chave_secreta_padrao';
