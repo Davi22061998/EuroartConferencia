@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     tooltip: { backgroundColor: cores.superficie, titleColor: cores.texto, bodyColor: cores.texto, borderColor: cores.grade, borderWidth: 1 }
                 },
                 scales: {
-                    x: { ticks: { color: cores.texto, maxRotation: 0, minRotation: 0, autoSkip: false }, grid: { display: false } },
+                    x: { ticks: { color: cores.texto, maxRotation: 0, minRotation: 0, autoSkip: false, callback: function(value) { const label = this.getLabelForValue(value); return label.length > 17 ? label.slice(0, 16) + '…' : label; } }, grid: { display: false } },
                     y: { beginAtZero: true, ticks: { color: cores.texto, precision: 0 }, grid: { color: cores.grade } }
                 }
             }
