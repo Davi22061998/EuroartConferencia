@@ -885,6 +885,10 @@ export class ConferenciaController {
     try {
       // Ordenação pelo ID evita falhas caso a coluna updatedAt não exista
       const filtro = String(req.query.status || '');
+      if (filtro === 'bloqueados' && req.usuario?.perfil !== 'admin') {
+        res.status(403).json({ erro: 'A consulta de pedidos bloqueados é exclusiva para administradores.' });
+        return;
+      }
       const where = filtro === 'bloqueados'
         ? { status: { [Op.in]: ['bloqueado_aprovacao', 'bloqueado'] } }
         : {};
