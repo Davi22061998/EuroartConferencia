@@ -382,6 +382,9 @@ function renderizarTabela() {
         const produtoLimpo = (p.descricao_produto || '').replace(/[\uFFFD]/g, '°');
         const clienteLimpo = (p.razao_social || '').replace(/[\uFFFD]/g, '');
 
+        const acoesAdmin = obterUsuarioAtual().perfil === 'admin' && ['bloqueado', 'bloqueado_aprovacao'].includes(p.status)
+            ? '<td><button type="button" onclick="decidirPacoteBloqueado(' + p.id + ', \'aprovar\')">Aprovar</button> <button type="button" onclick="decidirPacoteBloqueado(' + p.id + ', \'cancelar\')">Cancelar</button></td>'
+            : (obterUsuarioAtual().perfil === 'admin' ? '<td>-</td>' : '');
         tbody.innerHTML += `
             <tr class="${rowClass}">
                 <td class="admin-only col-center"><input type="checkbox" class="chk-pacote" value="${p.id}"></td>
@@ -397,6 +400,7 @@ function renderizarTabela() {
                 <td class="col-num">${p.peso_esperado_g ? Number(p.peso_esperado_g).toFixed(0) + ' g' : '-'}</td>
                 <td class="col-num"><strong>${p.peso_lido_g ? Number(p.peso_lido_g).toFixed(0) + ' g' : '-'}</strong></td>
                 <td class="col-center"><span class="badge-remessa">#${p.remessa_id}</span></td>
+                ${acoesAdmin}
             </tr>
         `;
     });
