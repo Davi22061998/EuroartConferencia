@@ -36,4 +36,7 @@
     window.aplicarTema = aplicarTema;
     window.atualizarBotoesTema = atualizarBotoes;
     aplicarTema(obterTemaInicial());
+    document.addEventListener('DOMContentLoaded', () => {
+        atualizarBotoes(document.documentElement.getAttribute('data-theme') || obterTemaInicial());
+    });
 })();
