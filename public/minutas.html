@@ -78,7 +78,8 @@
 
                 conferencias.forEach(conf => {
                     const dataFormatada = conf.data_finalizacao ? new Date(conf.data_finalizacao).toLocaleString('pt-BR') : '-';
-                    const qtdVolumes = conf.pacotes ? conf.pacotes.length : 0;
+                    const pacotesMinuta = conf.pacotes ? conf.pacotes.filter(p => p.status !== 'cancelado') : [];
+                    const qtdVolumes = pacotesMinuta.length;
                     const nomeUsuario = conf.usuario ? conf.usuario.nome : 'Desconhecido';
 
                     tbody.innerHTML += `
