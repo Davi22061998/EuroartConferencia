@@ -99,10 +99,11 @@
                                 <th>Peso Esp. (g)</th>
                                 <th>Peso Real (g)</th>
                                 <th>Remessa</th>
+                                <th class="admin-only">Ações</th>
                             </tr>
                         </thead>
                         <tbody id="listaPacotes">
-                            <tr><td colspan="11" class="text-center py-4 text-muted">Nenhuma conferência selecionada. Selecione uma transportadora e clique em "Retomar" ou importe um JSON.</td></tr>
+                            <tr><td colspan="12" class="text-center py-4 text-muted">Nenhuma conferência selecionada. Selecione uma transportadora e clique em "Retomar" ou importe um JSON.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -136,24 +137,14 @@
 
     <div id="modalBloqueioSuperior" class="modal-overlay">
         <div class="modal-content">
-            <h2 class="modal-title-danger"><i class="fas fa-lock"></i> Pacote Bloqueado</h2>
+            <h2 class="modal-title-danger"><i class="fas fa-lock"></i> Bloqueado - aguardando aprovação</h2>
             <div id="detalhesBloqueio" class="modal-box-info"></div>
             <p style="font-size: 0.95em; color: #475569; margin-bottom: 15px;">
-                Peso divergente na 2ª tentativa. Requer autorização de um superior:
+                O pedido foi bloqueado e ficará aguardando a decisão de um administrador. Você pode fechar esta janela e continuar a conferência.
             </p>
-            <form id="formLiberacaoSuperior" onsubmit="submeterLiberacaoSuperior(event)">
-                <input type="hidden" id="liberacaoPacoteId">
-                <input type="email" id="emailSuperior" placeholder="E-mail do Superior" required style="width: 90%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
-                <input type="password" id="senhaSuperior" placeholder="Senha do Superior" required style="width: 90%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
-                <textarea id="justificativaSuperior" placeholder="Justificativa do envio com ressalva" required style="width: 90%; padding: 10px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #cbd5e1; height: 60px;"></textarea>
-                <div style="display: flex; gap: 10px; justify-content: center;">
-                    <button type="submit" class="modal-action-btn btn-success-action">Autorizar Envio</button>
-                    <button type="button" onclick="fecharModalBloqueio()" class="modal-action-btn" style="background: #94a3b8; color: #fff;">Cancelar</button>
-                </div>
-            </form>
+            <button type="button" onclick="fecharModalBloqueio()" class="modal-action-btn" style="background: #94a3b8; color: #fff;">Fechar</button>
         </div>
     </div>
-
     <div id="duplicateModal" class="modal-overlay">
         <div class="modal-content">
             <h2 class="modal-title-warning"><i class="fas fa-clone"></i> Atenção: Pacote Duplicado!</h2>
