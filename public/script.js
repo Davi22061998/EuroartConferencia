@@ -152,8 +152,9 @@ async function processarBipagem(codigo) {
             abrirModalDuplicado(resposta.pacote);
         } else if (res.status === 422) {
             aplicarEfeitoVisual("error");
-            if (resposta.status === 'bloqueado') {
+            if (resposta.status === 'bloqueado' || resposta.status === 'bloqueado_aprovacao') {
                 abrirModalBloqueio(codigo, resposta.detalhes);
+                await recarregarConferenciaAtual();
             } else {
                 abrirModalDivergencia(codigo, resposta.detalhes);
             }
@@ -353,7 +354,7 @@ function renderizarTabela() {
     }
 
     let pacotes = conferenciaAtual.pacotes;
-    if (filtroAtivo) pacotes = pacotes.filter(p => p.status !== 'ok' && p.status !== 'liberado_divergente');
+    if (filtroAtivo) pacotes = pacotes.filter(p => p.status !== 'ok' && p.status !== 'liberado_divergente' && p.status !== 'cancelado');
     if (filtroTermo) {
         pacotes = pacotes.filter(p =>
             String(p.numero_nf).toLowerCase().includes(filtroTermo) ||
@@ -371,7 +372,8 @@ function renderizarTabela() {
             case 'ok': badgeStatus = '<span class="status-badge badge-ok"><i class="fas fa-check"></i> OK</span>'; rowClass = 'row-ok'; break;
             case 'liberado_divergente': badgeStatus = '<span class="status-badge badge-warning" title="Liberado por superior"><i class="fas fa-user-shield"></i> LIB. DIVERGENTE</span>'; rowClass = 'row-warning'; break;
             case 'divergente_peso': badgeStatus = '<span class="status-badge badge-danger"><i class="fas fa-weight-hanging"></i> PESO DIVERG.</span>'; rowClass = 'row-danger'; break;
-            case 'bloqueado': badgeStatus = '<span class="status-badge badge-locked"><i class="fas fa-lock"></i> BLOQUEADO</span>'; rowClass = 'row-locked'; break;
+            case 'bloqueado': case 'bloqueado_aprovacao': badgeStatus = '<span class="status-badge badge-locked"><i class="fas fa-lock"></i> BLOQUEADO - AGUARDANDO APROVAÇÃO</span>'; rowClass = 'row-locked'; break;
+            case 'cancelado': badgeStatus = '<span class="status-badge badge-duplicate"><i class="fas fa-ban"></i> CANCELADO</span>'; rowClass = 'row-duplicate'; break;
             case 'duplicado': badgeStatus = '<span class="status-badge badge-duplicate"><i class="fas fa-copy"></i> DUPLICADO</span>'; rowClass = 'row-duplicate'; break;
             default: badgeStatus = '<span class="status-badge badge-pending"><i class="fas fa-clock"></i> PENDENTE</span>'; rowClass = '';
         }
@@ -381,6 +383,9 @@ function renderizarTabela() {
         const produtoLimpo = (p.descricao_produto || '').replace(/[\uFFFD]/g, '°');
         const clienteLimpo = (p.razao_social || '').replace(/[\uFFFD]/g, '');
 
+        const acoesAdmin = obterUsuarioAtual().perfil === 'admin' && ['bloqueado', 'bloqueado_aprovacao'].includes(p.status)
+            ? '<td><button type="button" onclick="abrirAcoesPacoteBloqueado(' + p.id + ')">Reabrir análise</button><div id="acoes-bloqueado-' + p.id + '" style="display:none"><button type="button" onclick="decidirPacoteBloqueado(' + p.id + ', \'aprovar\')">Aprovar</button> <button type="button" onclick="decidirPacoteBloqueado(' + p.id + ', \'cancelar\')">Cancelar pedido</button></div></td>'
+            : (obterUsuarioAtual().perfil === 'admin' ? '<td>-</td>' : '');
         tbody.innerHTML += `
             <tr class="${rowClass}">
                 <td class="admin-only col-center"><input type="checkbox" class="chk-pacote" value="${p.id}"></td>
@@ -396,6 +401,7 @@ function renderizarTabela() {
                 <td class="col-num">${p.peso_esperado_g ? Number(p.peso_esperado_g).toFixed(0) + ' g' : '-'}</td>
                 <td class="col-num"><strong>${p.peso_lido_g ? Number(p.peso_lido_g).toFixed(0) + ' g' : '-'}</strong></td>
                 <td class="col-center"><span class="badge-remessa">#${p.remessa_id}</span></td>
+                ${acoesAdmin}
             </tr>
         `;
     });
@@ -418,7 +424,7 @@ function atualizarContadores() {
     }
 
     const conferidos = conferenciaAtual.pacotes.filter(p => p.status === 'ok' || p.status === 'liberado_divergente').length;
-    const total = conferenciaAtual.pacotes.length;
+    const total = conferenciaAtual.pacotes.filter(p => p.status !== 'cancelado').length;
     const porcentagem = total > 0 ? Math.round((conferidos / total) * 100) : 0;
 
     contadorEl.innerHTML = `
@@ -492,7 +498,7 @@ function abrirModalBloqueio(codigo, detalhes) {
         <p><strong>Peso Esperado:</strong> ${detalhes.peso_esperado} g</p>
         <p><strong>Peso Lido:</strong> ${detalhes.peso_lido} g</p>
         <p><strong>Faixa Aceita:</strong> ${detalhes.faixa_aceita}</p>
-        <p style="color:#b91c1c;"><strong>Status:</strong> BLOQUEADO NA 2ª TENTATIVA</p>
+        <p style="color:#b91c1c;"><strong>Status:</strong> BLOQUEADO - AGUARDANDO APROVAÇÃO</p>
     `;
     modal.classList.add('visible');
 }
@@ -500,8 +506,6 @@ function abrirModalBloqueio(codigo, detalhes) {
 function fecharModalBloqueio() {
     const modal = document.getElementById('modalBloqueioSuperior');
     if (modal) modal.classList.remove('visible');
-    const form = document.getElementById('formLiberacaoSuperior');
-    if (form) form.reset();
     cancelarCaixaAtiva();
     const input = document.getElementById('codigoInput');
     if(input) input.focus();
@@ -739,4 +743,20 @@ window.cancelarCaixaAtiva = cancelarCaixaAtiva;
 window.fecharModalDivergencia = fecharModalDivergencia;
 window.fecharModalBloqueio = fecharModalBloqueio;
 window.submeterLiberacaoSuperior = submeterLiberacaoSuperior;
+window.decidirPacoteBloqueado = decidirPacoteBloqueado;
 window.handleFileImport = handleFileImport;
+async function decidirPacoteBloqueado(pacoteId, decisao) {
+    if (obterUsuarioAtual().perfil !== 'admin') { mostrarMensagem('Ação exclusiva para administradores.', 'error'); return; }
+    const aprovacao = decisao === 'aprovar';
+    const justificativa = window.prompt(aprovacao ? 'Justificativa para aprovar o envio com divergência:' : 'Motivo do cancelamento deste pedido:');
+    if (!justificativa || !justificativa.trim()) return;
+    const endpoint = aprovacao ? 'aprovar-bloqueado' : 'cancelar-bloqueado';
+    try {
+        const res = await fetch(API_BASE + '/conferencias/pacotes/' + pacoteId + '/' + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + obterTokenAtual() }, body: JSON.stringify({ justificativa: justificativa.trim() }) });
+        const dados = await res.json();
+        if (!res.ok) { mostrarMensagem(dados.erro || 'Falha ao atualizar pedido.', 'error'); return; }
+        mostrarMensagem(dados.mensagem, 'success');
+        await recarregarConferenciaAtual();
+    } catch { mostrarMensagem('Falha de ligação à API.', 'error'); }
+}
+function abrirAcoesPacoteBloqueado(id) { const el = document.getElementById('acoes-bloqueado-' + id); if (el) el.style.display = 'block'; }

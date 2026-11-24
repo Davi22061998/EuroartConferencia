@@ -14,7 +14,7 @@ export interface PacoteAttributes {
   razao_social?: string;
   descricao_produto?: string;
   uf: string;
-  status: 'pendente' | 'ok' | 'divergente_peso' | 'bloqueado' | 'liberado_divergente' | 'duplicado';
+  status: 'pendente' | 'ok' | 'divergente_peso' | 'bloqueado' | 'bloqueado_aprovacao' | 'cancelado' | 'liberado_divergente' | 'duplicado';
   possui_guia_icms: boolean;
   caixa_id?: number | null;
   peso_esperado_g?: number | null;
@@ -36,7 +36,7 @@ export class Pacote extends Model<PacoteAttributes, PacoteCreationAttributes> im
   public declare razao_social?: string;
   public declare descricao_produto?: string;
   public declare uf: string;
-  public declare status: 'pendente' | 'ok' | 'divergente_peso' | 'bloqueado' | 'liberado_divergente' | 'duplicado';
+  public declare status: 'pendente' | 'ok' | 'divergente_peso' | 'bloqueado' | 'bloqueado_aprovacao' | 'cancelado' | 'liberado_divergente' | 'duplicado';
   public declare possui_guia_icms: boolean;
   public declare caixa_id?: number | null;
   public declare peso_esperado_g?: number | null;

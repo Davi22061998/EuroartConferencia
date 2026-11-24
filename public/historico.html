@@ -21,6 +21,10 @@
                     Registo completo de todos os pacotes processados no sistema (últimos 200). Utilize a pesquisa do navegador (Ctrl+F) para localizar NFs ou Chaves.
                 </p>
 
+                <div class="filter-section admin-only" style="margin-bottom: 16px;">
+                    <label for="filtroStatusHistorico">Filtrar histórico:</label>
+                    <select id="filtroStatusHistorico"><option value="todos">Todos os pedidos</option><option value="bloqueados">Bloqueados - aguardando aprovação</option></select>
+                </div>
                 <div class="table-container">
                     <table>
                         <thead>
@@ -32,10 +36,11 @@
                                 <th>Status</th>
                                 <th>Peso Real</th>
                                 <th>Justificativa (Se houver)</th>
+                                <th class="admin-only">Ações</th>
                             </tr>
                         </thead>
                         <tbody id="listaHistoricoGeral">
-                            <tr><td colspan="7" class="text-center py-4 text-muted">A carregar histórico...</td></tr>
+                            <tr><td colspan="8" class="text-center py-4 text-muted">A carregar histórico...</td></tr>
                         </tbody>
                     </table>
                 </div>

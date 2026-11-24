@@ -255,7 +255,12 @@ export class ConferenciaController {
         return;
       }
 
-      if (pacote.status === 'bloqueado') {
+      if (pacote.status === 'cancelado') {
+        res.status(403).json({ status: 'cancelado', erro: 'Este pedido foi cancelado por um administrador.' });
+        return;
+      }
+
+      if (pacote.status === 'bloqueado' || pacote.status === 'bloqueado_aprovacao') {
         res.status(403).json({
           status: 'bloqueado',
           erro: 'Pacote travado por divergência de peso na 2ª tentativa. Requer autorização de um superior.'
@@ -323,12 +328,12 @@ export class ConferenciaController {
 
       pacote.tentativas_peso += 1;
       if (pacote.tentativas_peso >= 2) {
-        pacote.status = 'bloqueado';
+        pacote.status = 'bloqueado_aprovacao';
         await pacote.save();
 
         res.status(422).json({
-          status: 'bloqueado',
-          mensagem: 'Peso divergente na 2ª tentativa. Pacote travado. Exige liberação de superior com justificativa.',
+          status: 'bloqueado_aprovacao',
+          mensagem: 'Bloqueado - aguardando aprovação de um administrador.',
           detalhes: {
             peso_esperado: pesoEsperadoTotal,
             peso_lido: pesoLido,
@@ -384,6 +389,11 @@ export class ConferenciaController {
         return;
       }
 
+      if (!['bloqueado', 'bloqueado_aprovacao'].includes(pacote.status)) {
+        res.status(409).json({ erro: 'Somente pacotes bloqueados aguardando aprovação podem ser liberados.' });
+        return;
+      }
+
       pacote.status = 'liberado_divergente';
       pacote.justificativa_liberacao = justificativa;
       pacote.usuario_liberacao_id = superior.id;
@@ -397,6 +407,59 @@ export class ConferenciaController {
     } catch (error: any) {
       res.status(500).json({ erro: error.message });
     }
+  }
+
+  static async aprovarPacoteBloqueado(req: Request, res: Response): Promise<void> {
+    try {
+      const id = Number(req.params.pacoteId);
+      const { justificativa } = req.body;
+      if (!id || !justificativa || !String(justificativa).trim()) {
+        res.status(400).json({ erro: 'Informe o pacote e a justificativa da aprovação.' });
+        return;
+      }
+      const pacote = await Pacote.findByPk(id);
+      if (!pacote) { res.status(404).json({ erro: 'Pacote não encontrado.' }); return; }
+      if (!['bloqueado_aprovacao', 'bloqueado'].includes(pacote.status)) {
+        res.status(409).json({ erro: 'Somente pacotes bloqueados aguardando aprovação podem ser aprovados.' });
+        return;
+      }
+      pacote.status = 'liberado_divergente';
+      pacote.justificativa_liberacao = String(justificativa).trim();
+      pacote.usuario_liberacao_id = req.usuario!.id;
+      pacote.data_conferido = new Date();
+      await pacote.save();
+      await sequelize.query(
+        'INSERT INTO logs_auditoria (usuario_id, acao, detalhes, criado_em) VALUES (?, ?, ?, NOW())',
+        { replacements: [req.usuario!.id, 'APROVACAO_PACOTE_DIVERGENTE', `Pacote #${pacote.id} / NF ${pacote.numero_nf}. Justificativa: ${String(justificativa).trim()}`] }
+      );
+      res.status(200).json({ mensagem: 'Pedido aprovado e liberado com divergência.', pacote });
+    } catch (error: any) { res.status(500).json({ erro: error.message }); }
+  }
+
+  static async cancelarPacoteBloqueado(req: Request, res: Response): Promise<void> {
+    try {
+      const id = Number(req.params.pacoteId);
+      const { justificativa } = req.body;
+      if (!id || !justificativa || !String(justificativa).trim()) {
+        res.status(400).json({ erro: 'Informe o pacote e o motivo do cancelamento.' });
+        return;
+      }
+      const pacote = await Pacote.findByPk(id);
+      if (!pacote) { res.status(404).json({ erro: 'Pacote não encontrado.' }); return; }
+      if (!['bloqueado_aprovacao', 'bloqueado'].includes(pacote.status)) {
+        res.status(409).json({ erro: 'Somente pacotes bloqueados aguardando aprovação podem ser cancelados por esta ação.' });
+        return;
+      }
+      pacote.status = 'cancelado';
+      pacote.justificativa_liberacao = 'Cancelado pelo administrador: ' + String(justificativa).trim();
+      pacote.data_conferido = new Date();
+      await pacote.save();
+      await sequelize.query(
+        'INSERT INTO logs_auditoria (usuario_id, acao, detalhes, criado_em) VALUES (?, ?, ?, NOW())',
+        { replacements: [req.usuario!.id, 'CANCELAMENTO_PACOTE_BLOQUEADO', `Pacote #${pacote.id} / NF ${pacote.numero_nf}. Motivo: ${String(justificativa).trim()}`] }
+      );
+      res.status(200).json({ mensagem: 'Pedido cancelado e registrado na auditoria. Ele não será contabilizado na minuta.', pacote });
+    } catch (error: any) { res.status(500).json({ erro: error.message }); }
   }
 
   static async listarConferenciasAbertas(req: Request, res: Response): Promise<void> {
@@ -477,6 +540,11 @@ export class ConferenciaController {
         return;
       }
 
+      if (conferencia.status === 'finalizada') {
+        res.status(409).json({ erro: 'Esta conferência já foi finalizada e não pode ser interrompida.' });
+        return;
+      }
+
       conferencia.status = 'interrompida';
       await conferencia.save();
 
@@ -497,6 +565,15 @@ export class ConferenciaController {
       const conferencia = await Conferencia.findByPk(id);
       if (!conferencia) {
         res.status(404).json({ erro: 'Conferência não encontrada.' });
+        return;
+      }
+
+      if (conferencia.status === 'finalizada') {
+        res.status(409).json({ erro: 'Esta conferência já foi finalizada e não pode ser retomada.' });
+        return;
+      }
+      if (conferencia.status !== 'interrompida' && conferencia.status !== 'em_andamento') {
+        res.status(409).json({ erro: 'Esta conferência não está disponível para retomada.' });
         return;
       }
 
@@ -526,9 +603,13 @@ export class ConferenciaController {
         res.status(404).json({ erro: 'Conferência não encontrada.' });
         return;
       }
+      if (conferencia.status === 'finalizada') {
+        res.status(409).json({ erro: 'Esta conferência já foi finalizada.' });
+        return;
+      }
 
       const pacotes = (conferencia as any).pacotes || [];
-      const pendentes = pacotes.filter((p: any) => p.status === 'pendente' || p.status === 'divergente_peso');
+      const pendentes = pacotes.filter((p: any) => ['pendente', 'divergente_peso', 'bloqueado_aprovacao'].includes(p.status));
 
       if (pendentes.length > 0 && usuarioLogado?.perfil !== 'admin') {
         res.status(403).json({
@@ -541,7 +622,25 @@ export class ConferenciaController {
       conferencia.data_finalizacao = new Date();
       await conferencia.save();
 
-      res.status(200).json({ mensagem: 'Conferência finalizada com sucesso!', conferencia });
+      const minutaExistente: any = await sequelize.query(
+        'SELECT id FROM minutas WHERE conferencia_id = ? LIMIT 1',
+        { replacements: [id], type: 'SELECT' as any }
+      );
+      let minutaId: number | null = minutaExistente[0]?.id || null;
+      if (!minutaId) {
+        const [resultado]: any = await sequelize.query(
+          'INSERT INTO minutas (numero_minuta, conferencia_id, data_emissao) VALUES (?, ?, NOW())',
+          { replacements: [`MIN-${id}-${Date.now()}`, id] }
+        );
+        minutaId = resultado?.insertId || null;
+      }
+
+      res.status(200).json({
+        mensagem: 'Conferência finalizada e minuta gerada com sucesso!',
+        conferencia,
+        minuta_id: minutaId,
+        minuta_url: `/api/conferencias/${id}/minuta`
+      });
     } catch (error: any) {
       res.status(500).json({ erro: error.message });
     }
@@ -640,7 +739,7 @@ export class ConferenciaController {
           {
             model: Pacote,
             as: 'pacotes',
-            where: { status: { [Op.in]: ['ok', 'liberado_divergente'] } },
+            where: { status: { [Op.ne]: 'cancelado' } },
             required: false,
             include: [{ model: ItemPacote, as: 'itens' }]
           }
@@ -697,13 +796,13 @@ export class ConferenciaController {
         if (y + alturaLinha > 750) { doc.addPage(); y = 40; }
 
         const dataConf = p.data_conferido ? new Date(p.data_conferido).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
-        const statusTexto = p.status === 'ok' ? 'OK' : 'LIB. DIVERG.';
+        const statusTexto = ({ ok: 'OK', liberado_divergente: 'LIB. DIVERG.', bloqueado_aprovacao: 'BLOQ. AG. APROVACAO', bloqueado: 'BLOQUEADO', divergente_peso: 'DIVERG. PESO', pendente: 'PENDENTE' } as Record<string, string>)[p.status] || p.status.toUpperCase();
         const clienteResumo = p.razao_social.length > 20 ? p.razao_social.substring(0, 18) + '...' : p.razao_social;
 
         doc.text(p.numero_nf, 40, y);
         doc.text(clienteResumo, 95, y);
         doc.text(statusTexto, 330, y);
-        doc.text(p.peso_lido_g.toString(), 410, y);
+        doc.text(p.peso_lido_g == null ? '-' : String(p.peso_lido_g), 410, y);
         doc.text(dataConf, 470, y);
         
         let currentY = y;
@@ -792,10 +891,15 @@ export class ConferenciaController {
   static async listarHistoricoGeral(req: Request, res: Response): Promise<void> {
     try {
       // Ordenação pelo ID evita falhas caso a coluna updatedAt não exista
-      const pacotes = await Pacote.findAll({
-        order: [['id', 'DESC']],
-        limit: 200
-      });
+      const filtro = String(req.query.status || '');
+      if (filtro === 'bloqueados' && req.usuario?.perfil !== 'admin') {
+        res.status(403).json({ erro: 'A consulta de pedidos bloqueados é exclusiva para administradores.' });
+        return;
+      }
+      const where = filtro === 'bloqueados'
+        ? { status: { [Op.in]: ['bloqueado_aprovacao', 'bloqueado'] } }
+        : {};
+      const pacotes = await Pacote.findAll({ where, order: [['id', 'DESC']], limit: 200 });
 
       // Join manual para garantir que a transportadora é anexada sem falhas de Sequelize
       const conferencias = await Conferencia.findAll({ attributes: ['id', 'transportadora', 'status'] });
