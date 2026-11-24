@@ -389,6 +389,11 @@ export class ConferenciaController {
         return;
       }
 
+      if (!['bloqueado', 'bloqueado_aprovacao'].includes(pacote.status)) {
+        res.status(409).json({ erro: 'Somente pacotes bloqueados aguardando aprovação podem ser liberados.' });
+        return;
+      }
+
       pacote.status = 'liberado_divergente';
       pacote.justificativa_liberacao = justificativa;
       pacote.usuario_liberacao_id = superior.id;
@@ -446,6 +451,8 @@ export class ConferenciaController {
         return;
       }
       pacote.status = 'cancelado';
+      pacote.justificativa_liberacao = 'Cancelado pelo administrador: ' + String(justificativa).trim();
+      pacote.data_conferido = new Date();
       await pacote.save();
       await sequelize.query(
         'INSERT INTO logs_auditoria (usuario_id, acao, detalhes, criado_em) VALUES (?, ?, ?, NOW())',
